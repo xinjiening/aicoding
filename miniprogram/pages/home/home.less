@@ -1,3 +1,43 @@
+.manage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 8rpx 4rpx 24rpx;
+}
+.manage-copy {
+  min-width: 0;
+}
+.manage-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #2C2C2C;
+}
+.manage-sub {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #9B8E93;
+}
+.hero-mood-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 250rpx;
+  max-width: 100%;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  border: 2rpx solid rgba(255, 183, 77, 0.6);
+  background: linear-gradient(135deg, #FFF3DC 0%, #FFE4B0 100%);
+  color: #8C4A00;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 8rpx 22rpx rgba(255, 152, 0, 0.18);
+}
 .hero {
   display: flex;
   align-items: baseline;
@@ -25,9 +65,14 @@
 }
 .hero-meta {
   margin-top: 16rpx;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .meta {
   flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.5);
   padding: 16rpx 20rpx;
   border-radius: 16rpx;
@@ -51,61 +96,283 @@
 .cta {
   margin-top: 8rpx;
   margin-bottom: 32rpx;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 .cta-row {
+  display: grid;
+  grid-template-columns: calc((100% - 16rpx) / 2) calc((100% - 16rpx) / 2);
+  gap: 16rpx;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+.cta-cell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.cta-row .cta-btn {
+  width: 100%;
+  max-width: 100%;
+  height: 96rpx;
+  min-width: 0;
+  margin: 0;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 48rpx;
+  font-size: 30rpx;
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.muted { color: #999; }
+.tiny { font-size: 22rpx; color: #B0B0B0; }
+.gap-12 { gap: 12rpx; }
+
+/* ===== Tabs（备注 / 大姨妈） ===== */
+.tabs {
   display: flex;
   gap: 16rpx;
-  margin-top: 16rpx;
-}
-.cta-row .btn-secondary {
-  flex: 1;
-}
-
-.item-text {
-  font-size: 28rpx;
-  color: #2C2C2C;
-  margin-top: 6rpx;
-  line-height: 1.5;
-  word-break: break-all;
-}
-
-/* ===== 朋友圈风格的备注分组（首页用） ===== */
-.timeline { padding-top: 4rpx; }
-.day-group {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-bottom: 20rpx;
+  padding: 6rpx;
+  background: #FFF7F8;
+  border-radius: 24rpx;
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  color: #888;
+  border-radius: 20rpx;
+  transition: all 0.2s;
+}
+.tab.tab-on {
+  background: #FFFFFF;
+  color: #C2185B;
+  font-weight: 700;
+  box-shadow: 0 2rpx 8rpx rgba(233, 30, 99, 0.12);
+}
+
+/* ===== Cycle card（大姨妈 tab） ===== */
+.cycle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding-top: 4rpx;
+}
+.cycle-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 2rpx solid #FCE4EC;
+  border-radius: 20rpx;
+  padding: 24rpx 24rpx 20rpx;
+  background: #FFFFFF;
+  position: relative;
+}
+.cycle-card.cycle-ongoing {
+  background: linear-gradient(135deg, #FFF1F4 0%, #FFFFFF 70%);
+  border-color: #F8BBD0;
+}
+
+.cycle-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+.cycle-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #E91E63;
+  flex-shrink: 0;
+}
+.cycle-card.cycle-ongoing .cycle-dot {
+  background: #FF4081;
+  box-shadow: 0 0 0 6rpx rgba(255, 64, 129, 0.18);
+}
+.cycle-range {
+  font-size: 30rpx;
+  color: #1F1F1F;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+  word-break: keep-all;
+}
+.cycle-tilde {
+  color: #B0B0B0;
+  font-weight: 400;
+}
+.cycle-end-ongoing {
+  color: #C2185B;
+  font-weight: 700;
+}
+
+.cycle-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0 0 30rpx;
+  margin-bottom: 4rpx;
+}
+.cycle-duration {
+  font-size: 24rpx;
+  color: #888;
+}
+.cycle-action {
+  font-size: 24rpx;
+  color: #C2185B;
+  background: #FCE4EC;
+  padding: 8rpx 18rpx;
+  border-radius: 20rpx;
+  font-weight: 600;
+}
+
+.cycle-notes-wrap {
+  margin-top: 16rpx;
+  padding-left: 30rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx dashed #FCE4EC;
+}
+.cycle-notes-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 24rpx;
+  color: #888;
+  padding: 4rpx 0;
+}
+.cycle-toggle-icon {
+  color: #C2185B;
+  font-size: 22rpx;
+  width: 24rpx;
+  display: inline-block;
+}
+.cycle-notes {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+.cycle-note {
+  padding: 10rpx 0;
+  border-bottom: 2rpx solid #F8F2F4;
+}
+.cycle-note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 10rpx;
+}
+.cycle-note:last-child {
+  border-bottom: none;
+}
+.cycle-note-when {
+  font-size: 22rpx;
+  color: #B0B0B0;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+.cycle-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.cycle-note-text {
+  font-size: 26rpx;
+  color: #2C2C2C;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ===== 朋友圈风格的备注分组（备注 tab） ===== */
+.timeline {
+  padding-top: 8rpx;
+}
+.day-group {
+  margin-bottom: 28rpx;
 }
 .day-group:last-child {
   margin-bottom: 0;
 }
+
 .day-head {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  padding: 4rpx 0 8rpx;
+  gap: 16rpx;
+  padding: 8rpx 0 12rpx;
 }
 .day-label {
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 700;
   color: #C2185B;
   background: #FCE4EC;
-  padding: 4rpx 14rpx;
-  border-radius: 16rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 20rpx;
 }
 .day-line {
   flex: 1;
   height: 2rpx;
   background: #FCE4EC;
 }
+.day-count {
+  font-size: 22rpx;
+  color: #B0B0B0;
+}
+
 .day-item {
   display: flex;
   align-items: flex-start;
-  padding: 10rpx 0;
+  padding: 16rpx 0;
+  border-bottom: 2rpx solid #F8F8F8;
+}
+.mood-item {
+  align-items: center;
+}
+.mood-time {
+  width: 120rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4rpx;
+}
+.mood-day {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.2;
+}
+.mood-clock {
+  font-size: 22rpx;
+  color: #B0B0B0;
+  line-height: 1.2;
+}
+.day-item:last-child {
+  border-bottom: none;
 }
 .day-time {
-  width: 88rpx;
+  width: 96rpx;
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: #888;
+  font-size: 26rpx;
+  color: #666;
   font-variant-numeric: tabular-nums;
   padding-top: 4rpx;
 }
@@ -113,10 +380,19 @@
   flex: 1;
   min-width: 0;
 }
-
-.more {
-  padding: 16rpx 0 0;
-  font-size: 26rpx;
+.row-text {
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  color: #2C2C2C;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.mood-item .row-text {
+  margin-top: 6rpx;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
+  word-break: break-word;
 }
 
 .future {
@@ -159,4 +435,6 @@
   padding: 10rpx 20rpx;
 }
 
-.empty { padding: 32rpx 0; }
+.empty { padding: 32rpx 0; text-align: center; }
+.empty-emoji { font-size: 48rpx; margin-bottom: 8rpx; }
+.empty-text { font-size: 26rpx; color: #888; }

@@ -1,8 +1,9 @@
 // whoami：bootstrap 云函数
 // 1. 拿当前 openid
 // 2. upsert 'default' family，把当前 openid 加入 members（addToSet 避免重复）
-// 3. 推断角色：family.created_by === openid → husband；否则 wife（V1 简单暴力够用）
-// 4. 返回 { openid, family_id, role }
+// 3. 角色判定优先级：family.roles[openid] > 默认 wife
+// 4. 透传 family.manual_avg_cycle_days（可空）
+// 5. 返回 { openid, family_id, role, role_manually_set, manual_avg_cycle_days }
 //
 // 严格遵循 design doc M2：用 atomic upsert，不要先查后插
 
@@ -40,9 +41,17 @@ exports.main = async () => {
           created_at: now,
           created_by: OPENID,
           members: [OPENID],
+          roles: {},
+          manual_avg_cycle_days: null,
         },
       });
-      family = { _id: FAMILY_ID, created_by: OPENID, members: [OPENID] };
+      family = {
+        _id: FAMILY_ID,
+        created_by: OPENID,
+        members: [OPENID],
+        roles: {},
+        manual_avg_cycle_days: null,
+      };
     } catch (_e) {
       family = (await families.doc(FAMILY_ID).get()).data;
     }
@@ -58,11 +67,24 @@ exports.main = async () => {
     family.members = [...(family.members || []), OPENID];
   }
 
+  // 角色判定
   let role = 'unknown';
+  let role_manually_set = false;
   if (family) {
-    if (family.created_by === OPENID) role = 'husband';
-    else if ((family.members || []).includes(OPENID)) role = 'wife';
+    const roles = family.roles || {};
+    const explicit = roles[OPENID];
+    if (explicit === 'husband' || explicit === 'wife') {
+      role = explicit;
+      role_manually_set = true;
+    } else if ((family.members || []).includes(OPENID)) {
+      role = 'wife';
+    }
   }
+
+  const manual_avg_cycle_days =
+    family && typeof family.manual_avg_cycle_days === 'number'
+      ? family.manual_avg_cycle_days
+      : null;
 
   return {
     ok: true,
@@ -70,6 +92,8 @@ exports.main = async () => {
       openid: OPENID,
       family_id: FAMILY_ID,
       role,
+      role_manually_set,
+      manual_avg_cycle_days,
     },
   };
 };

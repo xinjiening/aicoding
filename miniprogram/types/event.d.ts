@@ -45,6 +45,8 @@ export interface FlowPayload {
 
 export interface NotePayload {
   text: string;
+  kind?: 'mood' | 'period';
+  mood?: 'happy' | 'neutral' | 'sad';
 }
 
 export type EventPayload =
@@ -69,20 +71,28 @@ export interface AppEvent {
   created_at: string;
 }
 
+export type Role = 'husband' | 'wife' | 'unknown';
+
 export interface Family {
   _id: string;
   name: string;
   created_at: string;
   created_by: string;
   members: string[];
+  /** openid → role 显式映射，优先于 created_by 推断 */
+  roles?: { [openid: string]: Role };
+  /** 用户手动设置的平均周期；null/undefined 时走自动估算 */
+  manual_avg_cycle_days?: number | null;
 }
-
-export type Role = 'husband' | 'wife' | 'unknown';
 
 export interface UserInfo {
   openid: string;
   family_id: string;
   role: Role;
+  /** 当前 role 是否来自用户手动选择（true=手动，false=系统推断） */
+  role_manually_set?: boolean;
+  /** 透传家庭设置：手动平均周期 */
+  manual_avg_cycle_days?: number | null;
 }
 
 // period.ts 算法返回类型

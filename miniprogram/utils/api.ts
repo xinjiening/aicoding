@@ -10,12 +10,14 @@ import type {
   EventSubtype,
   HomeBundle,
   PeriodStats,
+  Role,
   Subject,
   UserInfo,
 } from '../types/event';
 
 const MOCK_PREFIX = 'mock_db_';
 const MOCK_USER_KEY = 'mock_user';
+const MOCK_MANUAL_AVG_KEY = 'mock_manual_avg_cycle_days';
 
 // ---------- Cloud env 判断 ----------
 
@@ -26,6 +28,18 @@ export function isCloudReady(): boolean {
 // ---------- 单飞缓存（防 1s 内同名同参重复调用）----------
 
 const inflight = new Map<string, { ts: number; promise: Promise<unknown> }>();
+
+function invalidateInflight(prefixes: string[] = []) {
+  if (prefixes.length === 0) {
+    inflight.clear();
+    return;
+  }
+  for (const key of Array.from(inflight.keys())) {
+    if (prefixes.some(prefix => key.startsWith(`${prefix}::`))) {
+      inflight.delete(key);
+    }
+  }
+}
 
 function cacheKey(name: string, payload: unknown): string {
   return `${name}::${JSON.stringify(payload === undefined ? null : payload)}`;
@@ -65,11 +79,17 @@ function mockUser(): UserInfo {
     cached = {
       openid: 'mock_openid_husband',
       family_id: DEFAULT_FAMILY_ID,
-      role: 'husband',
+      role: 'wife',
+      role_manually_set: false,
     };
     wx.setStorageSync(MOCK_USER_KEY, cached);
   }
-  return cached as UserInfo;
+  // 每次返回时附加家庭设置
+  const manual = wx.getStorageSync(MOCK_MANUAL_AVG_KEY);
+  return {
+    ...(cached as UserInfo),
+    manual_avg_cycle_days: typeof manual === 'number' ? manual : null,
+  };
 }
 
 function mockEvents(): AppEvent[] {
@@ -237,16 +257,58 @@ export const api = {
       openid: role === 'husband' ? 'mock_openid_husband' : 'mock_openid_wife',
       family_id: DEFAULT_FAMILY_ID,
       role,
+      role_manually_set: true,
     };
     wx.setStorageSync(MOCK_USER_KEY, user);
   },
 
+  // ---------- 家庭偏好设置（角色 / 平均周期）----------
+
+  setRole(role: 'husband' | 'wife'): Promise<{ openid: string; role: Role; role_manually_set: true }> {
+    if (!isCloudReady()) {
+      const cached = (wx.getStorageSync(MOCK_USER_KEY) as UserInfo) || mockUser();
+      const user: UserInfo = { ...cached, role, role_manually_set: true };
+      wx.setStorageSync(MOCK_USER_KEY, user);
+      invalidateInflight(['whoami', 'home-bundle', 'list-events']);
+      return Promise.resolve({ openid: user.openid, role, role_manually_set: true });
+    }
+    return callCloud<{ openid: string; role: Role; role_manually_set: true }>('family-settings', { action: 'setRole', role }).then((res) => {
+      invalidateInflight(['whoami', 'home-bundle', 'list-events']);
+      return res;
+    });
+  },
+
+  setManualAvgCycle(days: number): Promise<{ manual_avg_cycle_days: number }> {
+    if (!isCloudReady()) {
+      wx.setStorageSync(MOCK_MANUAL_AVG_KEY, days);
+      invalidateInflight(['whoami', 'home-bundle']);
+      return Promise.resolve({ manual_avg_cycle_days: days });
+    }
+    return callCloud<{ manual_avg_cycle_days: number }>('family-settings', { action: 'setManualAvgCycle', days }).then((res) => {
+      invalidateInflight(['whoami', 'home-bundle']);
+      return res;
+    });
+  },
+
+  clearManualAvgCycle(): Promise<{ manual_avg_cycle_days: null }> {
+    if (!isCloudReady()) {
+      wx.removeStorageSync(MOCK_MANUAL_AVG_KEY);
+      invalidateInflight(['whoami', 'home-bundle']);
+      return Promise.resolve({ manual_avg_cycle_days: null });
+    }
+    return callCloud<{ manual_avg_cycle_days: null }>('family-settings', { action: 'clearManualAvgCycle' }).then((res) => {
+      invalidateInflight(['whoami', 'home-bundle']);
+      return res;
+    });
+  },
+
   resetMockData() {
     wx.removeStorageSync(`${MOCK_PREFIX}events`);
+    wx.removeStorageSync(MOCK_MANUAL_AVG_KEY);
   },
 
   // 提供给页面：获取 stats（mock 直接算，cloud 时复用 home-bundle.stats）
-  computeStats(events: AppEvent[]): PeriodStats {
-    return calculatePeriodStats(events);
+  computeStats(events: AppEvent[], manualAvgCycleDays?: number | null): PeriodStats {
+    return calculatePeriodStats(events, manualAvgCycleDays);
   },
 };

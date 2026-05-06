@@ -24,7 +24,16 @@ function median(nums) {
   return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
 }
 
-function calculatePeriodStats(events) {
+function isValidManualAvg(n) {
+  return (
+    typeof n === 'number' &&
+    Number.isFinite(n) &&
+    n >= AVG_CYCLE_MIN_DAYS &&
+    n <= AVG_CYCLE_MAX_DAYS
+  );
+}
+
+function calculatePeriodStats(events, manualAvgCycleDays) {
   const valid = events.filter(e => !e.deleted_at);
   const periodStarts = valid
     .filter(e => e.category === 'period_start')
@@ -54,37 +63,33 @@ function calculatePeriodStats(events) {
   const inProgress = !lastEnd;
   const lastDurationDays = lastEnd ? Math.max(1, daysBetween(lastEnd, lastStart) + 1) : null;
 
-  if (periodStarts.length === 1) {
-    return {
-      lastStart,
-      daysSince,
-      avgCycleDays: null,
-      predictedNextStart: null,
-      lastDurationDays,
-      inProgress,
-      totalCycles: 1,
-    };
-  }
-
-  const asc = [...periodStarts].sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
-  const intervals = [];
-  for (let i = 1; i < asc.length; i++) {
-    const gap = daysBetween(asc[i].occurred_at, asc[i - 1].occurred_at);
-    if (gap >= AVG_CYCLE_MIN_DAYS && gap <= AVG_CYCLE_MAX_DAYS) intervals.push(gap);
-  }
+  const manualOverride = isValidManualAvg(manualAvgCycleDays) ? manualAvgCycleDays : null;
 
   let avgCycleDays;
-  if (intervals.length === 0) {
-    avgCycleDays = AVG_CYCLE_FALLBACK_DAYS;
-  } else if (intervals.length <= 2) {
-    avgCycleDays = Math.round(intervals.reduce((s, n) => s + n, 0) / intervals.length);
+  if (manualOverride !== null) {
+    avgCycleDays = manualOverride;
+  } else if (periodStarts.length === 1) {
+    avgCycleDays = null;
   } else {
-    avgCycleDays = Math.round(median(intervals.slice(-6)));
+    const asc = [...periodStarts].sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+    const intervals = [];
+    for (let i = 1; i < asc.length; i++) {
+      const gap = daysBetween(asc[i].occurred_at, asc[i - 1].occurred_at);
+      if (gap >= AVG_CYCLE_MIN_DAYS && gap <= AVG_CYCLE_MAX_DAYS) intervals.push(gap);
+    }
+    if (intervals.length === 0) {
+      avgCycleDays = AVG_CYCLE_FALLBACK_DAYS;
+    } else if (intervals.length <= 2) {
+      avgCycleDays = Math.round(intervals.reduce((s, n) => s + n, 0) / intervals.length);
+    } else {
+      avgCycleDays = Math.round(median(intervals.slice(-6)));
+    }
   }
 
-  const predictedNextStart = new Date(
-    new Date(lastStart).getTime() + avgCycleDays * ONE_DAY_MS,
-  ).toISOString();
+  const predictedNextStart =
+    avgCycleDays !== null
+      ? new Date(new Date(lastStart).getTime() + avgCycleDays * ONE_DAY_MS).toISOString()
+      : null;
 
   return {
     lastStart,
@@ -115,9 +120,17 @@ async function ensureFamilyMembership(openid) {
           created_at: now,
           created_by: openid,
           members: [openid],
+          roles: {},
+          manual_avg_cycle_days: null,
         },
       });
-      family = { _id: FAMILY_ID, created_by: openid, members: [openid] };
+      family = {
+        _id: FAMILY_ID,
+        created_by: openid,
+        members: [openid],
+        roles: {},
+        manual_avg_cycle_days: null,
+      };
     } catch (_e) {
       family = (await families.doc(FAMILY_ID).get()).data;
     }
@@ -127,9 +140,27 @@ async function ensureFamilyMembership(openid) {
     family.members = [...(family.members || []), openid];
   }
   let role = 'unknown';
-  if (family.created_by === openid) role = 'husband';
-  else if ((family.members || []).includes(openid)) role = 'wife';
-  return { openid, family_id: FAMILY_ID, role };
+  let role_manually_set = false;
+  const explicit = family && family.roles && family.roles[openid];
+  if (explicit === 'husband' || explicit === 'wife') {
+    role = explicit;
+    role_manually_set = true;
+  } else if (family.created_by === openid) {
+    role = 'husband';
+  } else if ((family.members || []).includes(openid)) {
+    role = 'wife';
+  }
+  const manual_avg_cycle_days =
+    family && typeof family.manual_avg_cycle_days === 'number'
+      ? family.manual_avg_cycle_days
+      : null;
+  return {
+    openid,
+    family_id: FAMILY_ID,
+    role,
+    role_manually_set,
+    manual_avg_cycle_days,
+  };
 }
 
 exports.main = async () => {
@@ -152,7 +183,7 @@ exports.main = async () => {
     ]);
 
     const events = eventsRes.data;
-    const stats = calculatePeriodStats(events);
+    const stats = calculatePeriodStats(events, user.manual_avg_cycle_days);
 
     return { ok: true, data: { user, events, stats } };
   } catch (e) {

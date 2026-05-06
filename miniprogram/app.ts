@@ -7,7 +7,9 @@ interface IAppOption {
     user?: UserInfo;
     cloudReady: boolean;
     lastPingTs: number;
+    batchMode?: boolean;
     pendingRecordDate?: string;
+    pendingPeriodTab?: 'note' | 'cycle';
   };
   ensureCloud(): Promise<UserInfo | null>;
   pingIfStale(): Promise<void>;
@@ -18,6 +20,7 @@ App<IAppOption>({
   globalData: {
     cloudReady: false,
     lastPingTs: 0,
+    batchMode: false,
   },
 
   onLaunch() {

@@ -23,14 +23,31 @@ function median(nums: number[]): number {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
+function isValidManualAvg(n: unknown): n is number {
+  return (
+    typeof n === 'number' &&
+    Number.isFinite(n) &&
+    n >= AVG_CYCLE_MIN_DAYS &&
+    n <= AVG_CYCLE_MAX_DAYS
+  );
+}
+
 /**
  * M1：显式 4 case，全部带 null 兜底
  * - case 0：0 个 period_start  → 全 null
  * - case 1：1 个                → 只有 lastStart / daysSince / lastDuration
+ *                                 （传入 manualAvgCycleDays 后可同时给出 predictedNext）
  * - case 2：2 个                → +avgCycle +predictedNext
  * - case ≥3：用最近 6 次的中位数 周期，过滤异常长周期
+ *
+ * @param manualAvgCycleDays 用户在「我们 → 周期长度」手动设置的值；
+ *   - 合法值（18..60 整数）→ 直接覆盖自动估算
+ *   - null/undefined/越界 → 走自动估算
  */
-export function calculatePeriodStats(events: AppEvent[]): PeriodStats {
+export function calculatePeriodStats(
+  events: AppEvent[],
+  manualAvgCycleDays?: number | null,
+): PeriodStats {
   const valid = events.filter(e => !e.deleted_at);
 
   const periodStarts = valid
@@ -62,41 +79,37 @@ export function calculatePeriodStats(events: AppEvent[]): PeriodStats {
   const inProgress = !lastEnd;
   const lastDurationDays = lastEnd ? Math.max(1, daysBetween(lastEnd, lastStart) + 1) : null;
 
-  if (periodStarts.length === 1) {
-    return {
-      lastStart,
-      daysSince,
-      avgCycleDays: null,
-      predictedNextStart: null,
-      lastDurationDays,
-      inProgress,
-      totalCycles: 1,
-    };
-  }
+  // 计算 avgCycleDays：手动 > 自动 > null
+  const manualOverride = isValidManualAvg(manualAvgCycleDays) ? manualAvgCycleDays : null;
 
-  // 2+ 个起点，算周期间隔（升序拿）
-  const ascStarts = [...periodStarts].sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
-  const intervals: number[] = [];
-  for (let i = 1; i < ascStarts.length; i++) {
-    const gap = daysBetween(ascStarts[i].occurred_at, ascStarts[i - 1].occurred_at);
-    if (gap >= AVG_CYCLE_MIN_DAYS && gap <= AVG_CYCLE_MAX_DAYS) {
-      intervals.push(gap);
+  let avgCycleDays: number | null;
+  if (manualOverride !== null) {
+    avgCycleDays = manualOverride;
+  } else if (periodStarts.length === 1) {
+    avgCycleDays = null;
+  } else {
+    const ascStarts = [...periodStarts].sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+    const intervals: number[] = [];
+    for (let i = 1; i < ascStarts.length; i++) {
+      const gap = daysBetween(ascStarts[i].occurred_at, ascStarts[i - 1].occurred_at);
+      if (gap >= AVG_CYCLE_MIN_DAYS && gap <= AVG_CYCLE_MAX_DAYS) {
+        intervals.push(gap);
+      }
+    }
+    if (intervals.length === 0) {
+      // 全部异常 → 退回 fallback（28 天），仍标记预测低置信
+      avgCycleDays = AVG_CYCLE_FALLBACK_DAYS;
+    } else if (intervals.length <= 2) {
+      avgCycleDays = Math.round(intervals.reduce((s, n) => s + n, 0) / intervals.length);
+    } else {
+      avgCycleDays = Math.round(median(intervals.slice(-6)));
     }
   }
 
-  // 全部异常 → 退回 fallback（28 天），但仍标记预测低置信
-  let avgCycleDays: number;
-  if (intervals.length === 0) {
-    avgCycleDays = AVG_CYCLE_FALLBACK_DAYS;
-  } else if (intervals.length <= 2) {
-    avgCycleDays = Math.round(intervals.reduce((s, n) => s + n, 0) / intervals.length);
-  } else {
-    avgCycleDays = Math.round(median(intervals.slice(-6)));
-  }
-
-  const predictedNextStart = new Date(
-    new Date(lastStart).getTime() + avgCycleDays * ONE_DAY_MS,
-  ).toISOString();
+  const predictedNextStart =
+    avgCycleDays !== null
+      ? new Date(new Date(lastStart).getTime() + avgCycleDays * ONE_DAY_MS).toISOString()
+      : null;
 
   return {
     lastStart,

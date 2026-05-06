@@ -1,8 +1,0 @@
-{
-  "navigationStyle": "custom",
-  "usingComponents": {
-    "period-calendar": "../../components/period-calendar/period-calendar",
-    "recorder-badge": "../../components/recorder-badge/recorder-badge",
-    "navigation-bar": "../../components/navigation-bar/navigation-bar"
-  }
-}

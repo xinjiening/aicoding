@@ -1,5 +1,9 @@
 .wcard {
   background: #FFFFFF;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   border-radius: 28rpx;
   padding: 36rpx 32rpx;
   box-shadow: 0 8rpx 24rpx rgba(233, 30, 99, 0.06);
@@ -14,15 +18,29 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20rpx;
+  gap: 16rpx;
+  min-width: 0;
 }
 .title {
   font-size: 30rpx;
   font-weight: 600;
   color: #2C2C2C;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.head-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12rpx;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 .sub {
   font-size: 24rpx;
   color: #999;
+  white-space: nowrap;
 }
 .content {
   font-size: 28rpx;

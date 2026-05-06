@@ -2,47 +2,54 @@
 
 <scroll-view scroll-y enable-flex class="page-wrap">
 
-  <!-- 谁 -->
-  <view class="card">
-    <view class="card-title">关于谁</view>
-    <view class="row gap-12 seg-row">
-      <view class="seg-item">
+  <!-- 谁 + 时间：横向 50/50 -->
+  <view class="row-cards">
+    <!-- 谁 -->
+    <view class="card half">
+      <view class="card-title">关于谁</view>
+      <view class="seg-row">
         <view class="seg {{ subject === 'wife' ? 'seg-on' : '' }}" data-subject="wife" bindtap="onSubjectTap">老婆</view>
-      </view>
-      <view class="seg-item">
         <view class="seg {{ subject === 'husband' ? 'seg-on' : '' }}" data-subject="husband" bindtap="onSubjectTap">我</view>
+      </view>
+    </view>
+
+    <!-- 时间（仅"现在/选择日期"的开关在这） -->
+    <view class="card half">
+      <view class="card-title">什么时候</view>
+      <view class="seg-row">
+        <view class="seg {{ timeMode === 'now' ? 'seg-on' : '' }}" bindtap="onUseNow">现在</view>
+        <view class="seg {{ timeMode === 'range' ? 'seg-on' : '' }}" bindtap="onUseDateRange">选择日期</view>
       </view>
     </view>
   </view>
 
-  <!-- 时间 -->
-  <view class="card">
-    <view class="card-title">什么时候</view>
-    <view class="row gap-12 seg-row">
-      <view class="seg-item">
-        <view class="seg {{ timeMode === 'now' ? 'seg-on' : '' }}" bindtap="onUseNow">现在</view>
+  <!-- 选了"选择日期"后再展开一张全宽的日期面板，避免半宽卡片里挤不下 -->
+  <view wx:if="{{ timeMode === 'range' }}" class="card">
+    <view class="card-title">日期范围</view>
+    <view class="range-panel">
+      <view class="card-sub" wx:if="{{ subject === 'wife' }}">
+        💡 选好后会作为「大姨妈周期」记到周期页；只填开始也行，结束日期可以以后再补。
       </view>
-      <view class="seg-item">
-        <view class="seg {{ timeMode === 'range' ? 'seg-on' : '' }}" bindtap="onUseDateRange">选择日期</view>
+      <view class="card-sub" wx:else>
+        💡 这一笔会用所选日期作为发生时间。
       </view>
-    </view>
-    <view wx:if="{{ timeMode === 'range' }}" class="range-panel">
-      <view class="card-sub">开始和结束都能记；只记开始也可以，之后去周期页再补结束</view>
-      <view class="row gap-12 seg-row">
-        <view class="seg-item">
-          <picker mode="date" value="{{ periodStartDate }}" end="{{ todayDate }}" bindchange="onPeriodStartDateChange">
-            <view class="seg {{ periodStartDate ? 'seg-on' : '' }}">{{ periodStartDate || '选择开始日期' }}</view>
-          </picker>
-        </view>
-        <view class="seg-item">
-          <picker mode="date" value="{{ periodEndDate }}" start="{{ periodStartDate || '' }}" end="{{ todayDate }}" bindchange="onPeriodEndDateChange">
-            <view class="seg {{ periodEndDate ? 'seg-on' : '' }}">{{ periodEndDate || '选择结束日期' }}</view>
-          </picker>
-        </view>
+
+      <view class="seg-row range-row">
+        <picker class="seg-wrap" mode="date" value="{{ periodStartDate }}" end="{{ todayDate }}" bindchange="onPeriodStartDateChange">
+          <view class="seg seg-block {{ periodStartDate ? 'seg-on' : '' }}">
+            🌹 {{ periodStartLabel || '选择开始日期' }}
+          </view>
+        </picker>
+        <picker class="seg-wrap" mode="date" value="{{ periodEndDate }}" start="{{ periodStartDate }}" end="{{ todayDate }}" bindchange="onPeriodEndDateChange">
+          <view class="seg seg-block {{ periodEndDate ? 'seg-on' : '' }}">
+            ✅ {{ periodEndLabel || '选择结束日期' }}
+          </view>
+        </picker>
       </view>
-      <view class="row clear-row">
-        <view class="text-btn" bindtap="onClearPeriodStart">清空开始</view>
-        <view class="text-btn" bindtap="onClearPeriodEnd">清空结束</view>
+
+      <view wx:if="{{ periodStartDate || periodEndDate }}" class="row clear-row">
+        <view wx:if="{{ periodStartDate }}" class="text-btn" bindtap="onClearPeriodStart">✕ 清空开始</view>
+        <view wx:if="{{ periodEndDate }}" class="text-btn" bindtap="onClearPeriodEnd">✕ 清空结束</view>
       </view>
     </view>
   </view>
@@ -83,11 +90,11 @@
 
   <!-- 备注 -->
   <view class="card">
-    <view class="card-title">备注（情绪 / 用药 / 运动 / 睡眠 等）</view>
+    <view class="card-title">备注（经期情况 / 用药 / 运动 / 睡眠 等）</view>
     <textarea
       class="ta"
       maxlength="500"
-      placeholder="比如：老婆下午开始疼，不算重，准备多喝热水"
+      placeholder="比如：下午开始疼，不算重，准备多喝热水"
       value="{{ noteText }}"
       bindinput="onNoteInput"
       auto-height

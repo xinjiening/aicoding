@@ -1,6 +1,4 @@
 .seg {
-  width: 100%;
-  flex: 1;
   text-align: center;
   padding: 20rpx 0;
   border: 2rpx solid #FCE4EC;
@@ -15,12 +13,55 @@
   color: #FFFFFF;
   border-color: #E91E63;
 }
+
+/* 一行内 N 等分；同时支持普通 .seg 和 picker 包裹的 .seg-wrap */
+.seg-row {
+  display: flex;
+  align-items: stretch;
+  gap: 12rpx;
+  width: 100%;
+}
+.seg-row > .seg {
+  flex: 1;
+  min-width: 0;
+}
+.seg-row > .seg-wrap {
+  flex: 1;
+  min-width: 0;
+  display: block; /* picker 默认 inline，强制块化才能配合 flex:1 撑满一份 */
+}
+/* picker 内部的 .seg 想撑满 picker，要 width:100%（不能依赖 flex:1，因为 picker 不是 flex 容器） */
+.seg-wrap > .seg,
+.seg-block {
+  width: 100%;
+  display: block;
+}
+
 .row { display: flex; align-items: center; }
 .gap-12 { gap: 12rpx; }
 .flex { flex: 1; }
-.seg-row { width: 100%; }
-.seg-item { flex: 1; min-width: 0; }
-.range-panel { margin-top: 20rpx; }
+
+/* 「关于谁 + 什么时候」横向 50/50 卡片组 */
+.row-cards {
+  display: flex;
+  align-items: stretch;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.row-cards > .card.half {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 24rpx;
+}
+/* 半宽卡片里 seg 文字小一点，避免「选择日期」四字换行 */
+.row-cards > .card.half .seg {
+  padding: 16rpx 0;
+  font-size: 26rpx;
+}
+
+.range-panel { margin-top: 4rpx; }
+.range-row { margin-top: 16rpx; }
 
 .clear-row {
   justify-content: flex-end;
@@ -31,6 +72,7 @@
 .text-btn {
   font-size: 24rpx;
   color: #C2185B;
+  padding: 4rpx 12rpx;
 }
 
 .chips {

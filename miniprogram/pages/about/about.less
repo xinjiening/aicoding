@@ -26,6 +26,9 @@
   color: #E91E63;
   font-size: 26rpx;
 }
+.warn-link {
+  color: #E65100;
+}
 
 .debug {
   background: #FFF3E0;
@@ -35,6 +38,100 @@
 .gap-12 { gap: 12rpx; }
 .flex { flex: 1; }
 .mt { margin-top: 16rpx; }
+
+.manage-card {
+  background: linear-gradient(135deg, #FFF6F8 0%, #FFFFFF 100%);
+  border: 2rpx solid rgba(233, 30, 99, 0.14);
+}
+.manage-row {
+  padding: 0;
+}
+.manage-copy {
+  min-width: 0;
+}
+
+.mood-card {
+  background: linear-gradient(135deg, #FFF7EA 0%, #FFFFFF 100%);
+  border: 2rpx solid rgba(255, 183, 77, 0.22);
+}
+.mood-row {
+  padding: 0;
+}
+.no-gap {
+  margin-bottom: 6rpx;
+}
+.mood-action {
+  flex-shrink: 0;
+  min-width: 156rpx;
+  text-align: center;
+  padding: 16rpx 24rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #FFF3DC 0%, #FFE4B0 100%);
+  color: #8C4A00;
+  font-size: 24rpx;
+  font-weight: 700;
+  box-shadow: 0 8rpx 20rpx rgba(255, 152, 0, 0.12);
+}
+
+/* ===== 角色切换 pill ===== */
+.role-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.role-pill {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  border-radius: 18rpx;
+  background: #FFF7F8;
+  color: #888;
+  font-size: 28rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.15s;
+}
+.role-pill.role-on {
+  background: #FFFFFF;
+  color: #C2185B;
+  font-weight: 700;
+  border-color: #F8BBD0;
+  box-shadow: 0 2rpx 10rpx rgba(233, 30, 99, 0.12);
+}
+
+/* ===== 周期长度 - 手动输入行 ===== */
+.manual-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+.manual-row .input {
+  flex: 1;
+  height: 72rpx;
+  border: 2rpx solid #FCE4EC;
+  border-radius: 16rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  background: #FFFFFF;
+}
+.manual-row .btn-primary.mini {
+  margin: 0;
+  font-size: 26rpx;
+  padding: 0 28rpx;
+  line-height: 72rpx;
+  height: 72rpx;
+  min-width: 0;
+}
+
+.badge-manual {
+  margin-left: 8rpx;
+  background: #FCE4EC;
+  color: #C2185B;
+  font-size: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 12rpx;
+  font-weight: 600;
+}
 
 .footnote {
   margin: 32rpx 0;

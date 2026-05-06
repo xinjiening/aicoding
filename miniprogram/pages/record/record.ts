@@ -12,6 +12,7 @@ interface QueueItem {
   label: string;
   payload: EventPayload;
   occurredAt?: string;
+  batchId?: string;
 }
 
 Page({
@@ -29,7 +30,9 @@ Page({
     severityLabels: SEVERITY_LABELS,
     todayDate: '',
     periodStartDate: '',
+    periodStartLabel: '',
     periodEndDate: '',
+    periodEndLabel: '',
   },
 
   onLoad(opts: { date?: string }) {
@@ -53,7 +56,9 @@ Page({
     this.setData({
       timeMode: 'range',
       periodStartDate: date,
+      periodStartLabel: prettyDateLabel(date),
       periodEndDate: '',
+      periodEndLabel: '',
     });
   },
 
@@ -95,7 +100,13 @@ Page({
   },
 
   onUseNow() {
-    this.setData({ timeMode: 'now', periodStartDate: '', periodEndDate: '' });
+    this.setData({
+      timeMode: 'now',
+      periodStartDate: '',
+      periodStartLabel: '',
+      periodEndDate: '',
+      periodEndLabel: '',
+    });
   },
 
   onUseDateRange() {
@@ -104,57 +115,73 @@ Page({
 
   onPeriodStartDateChange(e: WechatMiniprogram.PickerChange) {
     const periodStartDate = String(e.detail.value);
-    const nextData: Record<string, string> = { periodStartDate };
+    const next: Record<string, string> = {
+      periodStartDate,
+      periodStartLabel: prettyDateLabel(periodStartDate),
+    };
+    // 若已选的结束早于新开始，则清掉结束
     if (this.data.periodEndDate && this.data.periodEndDate < periodStartDate) {
-      nextData.periodEndDate = '';
+      next.periodEndDate = '';
+      next.periodEndLabel = '';
     }
-    this.setData(nextData as { periodStartDate: string; periodEndDate?: string });
+    this.setData(next as Partial<typeof this.data>);
   },
 
   onPeriodEndDateChange(e: WechatMiniprogram.PickerChange) {
     const periodEndDate = String(e.detail.value);
-    if (!this.data.periodStartDate) {
-      wx.showToast({ icon: 'none', title: '先选开始日期' });
-      return;
-    }
-    if (periodEndDate < this.data.periodStartDate) {
+    if (this.data.periodStartDate && periodEndDate < this.data.periodStartDate) {
       wx.showToast({ icon: 'none', title: '结束不能早于开始' });
       return;
     }
-    this.setData({ periodEndDate });
+    this.setData({
+      periodEndDate,
+      periodEndLabel: prettyDateLabel(periodEndDate),
+    });
   },
 
   onClearPeriodStart() {
-    this.setData({ periodStartDate: '', periodEndDate: '' });
+    // 清开始时，结束也跟着清掉（保持语义干净）
+    this.setData({
+      periodStartDate: '',
+      periodStartLabel: '',
+      periodEndDate: '',
+      periodEndLabel: '',
+    });
   },
 
   onClearPeriodEnd() {
-    this.setData({ periodEndDate: '' });
+    this.setData({ periodEndDate: '', periodEndLabel: '' });
   },
 
   async onSubmit() {
     const items = this.buildQueue();
     if (items.length === 0) {
-      wx.showToast({ icon: 'none', title: '至少记点症状、备注，或选大姨妈日期' });
-      return;
-    }
-    if (this.data.timeMode === 'range' && !this.data.periodStartDate) {
-      wx.showToast({ icon: 'none', title: '先选开始日期' });
+      wx.showToast({ icon: 'none', title: '至少记点症状/备注，或选大姨妈日期' });
       return;
     }
     this.setData({ submitting: true });
 
+    await this.cleanupConflictingRangeStarts();
+    const sharedBatchId = this.shouldUseSharedBatch(items) ? makeBatchId() : '';
+
     let okCount = 0;
+    let dedupedCount = 0;
+    let hasPeriodEvent = false;
     for (const it of items) {
       try {
-        await api.createEvent({
+        const res = await api.createEvent({
           subject: this.data.subject,
           category: it.category,
           subtype: it.subtype,
           payload: it.payload,
           occurred_at: it.occurredAt || this.getDefaultOccurredAt(),
           source: 'manual',
+          batch_id: it.batchId || sharedBatchId || undefined,
         });
+        if (it.category === 'period_start' || it.category === 'period_end') {
+          hasPeriodEvent = true;
+        }
+        if (res && res.deduped) dedupedCount += 1;
         okCount += 1;
       } catch (e) {
         console.warn('[record] save failed', it, e);
@@ -162,14 +189,53 @@ Page({
     }
 
     this.setData({ submitting: false });
+
     if (okCount === items.length) {
-      wx.showToast({ icon: 'success', title: `已记 ${okCount} 条` });
+      const tip = dedupedCount > 0 ? `已记 ${okCount} 条（${dedupedCount} 条已存在）` : `已记 ${okCount} 条`;
+      wx.showToast({ icon: 'success', title: tip });
       this.resetForm();
+
+      // 如果记了大姨妈周期事件，跳到周期页并落到「大姨妈」Tab，让用户立刻看到/操作
+      if (hasPeriodEvent) {
+        app.globalData.pendingPeriodTab = 'cycle';
+      }
       setTimeout(() => {
-        wx.switchTab({ url: '/pages/period/period' });
+        wx.switchTab({ url: '/pages/home/home' });
       }, 600);
     } else {
       wx.showToast({ icon: 'none', title: `只记成功 ${okCount}/${items.length}` });
+    }
+  },
+
+  /**
+   * 修复：当用户保存「开始<结束」的区间时，如果结束当天已经有一条 period_start，
+   * 会把周期拆成「前一段未结束 + 当天单日周期」。这里在提交前做一次冲突清理。
+   */
+  async cleanupConflictingRangeStarts() {
+    const { subject, timeMode, periodStartDate, periodEndDate } = this.data;
+    if (subject !== 'wife' || timeMode !== 'range') return;
+    if (!periodStartDate || !periodEndDate) return;
+    if (periodStartDate >= periodEndDate) return;
+
+    try {
+      const events = await api.listEvents({ subject: 'wife', limit: 300 });
+      const boundaryStarts = events.filter(
+        e =>
+          e.category === 'period_start' &&
+          !e.deleted_at &&
+          ymd(new Date(e.occurred_at)) === periodEndDate,
+      );
+      if (boundaryStarts.length === 0) return;
+
+      for (const ev of boundaryStarts) {
+        try {
+          await api.softDeleteEvent(ev._id);
+        } catch (_e) {
+          // 可能不是我本人记录，删除失败时忽略，不阻断主提交流程
+        }
+      }
+    } catch (e) {
+      console.warn('[record] cleanup conflicting starts failed', e);
     }
   },
 
@@ -217,7 +283,7 @@ Page({
         id: 'note',
         category: 'note',
         label: this.data.noteText.trim().slice(0, 30),
-        payload: { text: this.data.noteText.trim() },
+        payload: { text: this.data.noteText.trim(), kind: 'period' },
       });
     }
     return items;
@@ -230,7 +296,9 @@ Page({
       noteText: '',
       timeMode: 'now',
       periodStartDate: '',
+      periodStartLabel: '',
       periodEndDate: '',
+      periodEndLabel: '',
     });
   },
 
@@ -240,10 +308,38 @@ Page({
     }
     return undefined;
   },
+
+  shouldUseSharedBatch(items: QueueItem[]) {
+    if (this.data.subject !== 'wife') return false;
+    return items.some(it =>
+      it.category === 'period_start' ||
+      it.category === 'period_end' ||
+      it.category === 'symptom' ||
+      it.category === 'flow' ||
+      it.category === 'note',
+    );
+  },
 });
 
 function toNoonIso(dateStr: string): string {
   const d = new Date(dateStr);
   d.setHours(12, 0, 0, 0);
   return d.toISOString();
+}
+
+function makeBatchId(): string {
+  return `batch_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** YYYY-MM-DD → "5月3日" / 跨年时显示 "25年12月3日" */
+function prettyDateLabel(ymdStr: string): string {
+  if (!ymdStr) return '';
+  const parts = ymdStr.split('-');
+  if (parts.length !== 3) return ymdStr;
+  const [y, m, d] = parts;
+  const thisYear = new Date().getFullYear();
+  if (parseInt(y, 10) === thisYear) {
+    return `${parseInt(m, 10)}月${parseInt(d, 10)}日`;
+  }
+  return `${y.slice(2)}年${parseInt(m, 10)}月${parseInt(d, 10)}日`;
 }

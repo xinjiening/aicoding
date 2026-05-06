@@ -12,9 +12,9 @@ export function whoseAddress(role: Role): { wifeWord: string; husbandWord: strin
   return { wifeWord: '老婆', husbandWord: '老公', selfWord: '我' };
 }
 
-/** 「老婆下次大姨妈」 / 「你下次大姨妈」 */
+/** 主卡顶部一行：丈夫视角带「老婆」前缀；老婆视角去掉前缀，纯中性 */
 export function nextLine(role: Role): string {
-  if (role === 'wife') return '你下次大姨妈';
+  if (role === 'wife') return '下次大姨妈';
   return '老婆下次大姨妈';
 }
 
