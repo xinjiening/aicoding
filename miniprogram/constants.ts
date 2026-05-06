@@ -1,6 +1,6 @@
 // V1 全局常量
 
-export const CLOUD_ENV = 'nxj-d9gobn22o642baa4a';
+export const CLOUD_ENV = 'XXX';
 // ⬆️ 用户开通云开发后改成实际 envId（小程序后台 → 云开发 → 设置 → 环境ID）
 
 export const DEFAULT_FAMILY_ID = 'default';
