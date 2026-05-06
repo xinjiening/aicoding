@@ -74,6 +74,7 @@ Page({
     predictedNextStart: '',
     avgCycleText: '—',
     inProgressBadge: '',
+    cycleRecordCount: 0,
 
     // 列表 / 周期
     activeTab: 'note' as 'note' | 'cycle',
@@ -137,6 +138,7 @@ Page({
           stats.inProgress && stats.daysSince !== null
             ? `进行中 · 第 ${stats.daysSince + 1} 天`
             : '',
+        cycleRecordCount: cycles.length,
         groups: groupByMonth(items),
         cycles,
       });
@@ -218,6 +220,7 @@ Page({
   async onMarkPeriodStart() {
     const { user } = this.data;
     if (!user) return;
+    if (!(await this.ensurePeriodDateAvailable(ymd(new Date())))) return;
     wx.vibrateShort({ type: 'light' });
 
     try {
@@ -246,6 +249,7 @@ Page({
       wx.showToast({ icon: 'none', title: '请先记录开始时间', duration: 1800 });
       return;
     }
+    if (!(await this.ensurePeriodDateAvailable(ymd(new Date())))) return;
     wx.vibrateShort({ type: 'light' });
     try {
       const result = await api.createEvent({
@@ -332,6 +336,8 @@ Page({
   },
 
   async submitMark(category: 'period_start' | 'period_end', occurredAt: string, okMsg: string) {
+    const dateStr = ymd(new Date(occurredAt));
+    if (!(await this.ensurePeriodDateAvailable(dateStr))) return;
     try {
       const result = await api.createEvent({
         subject: 'wife',
@@ -377,6 +383,7 @@ Page({
       wx.showToast({ icon: 'none', title: '结束时间不能早于开始' });
       return;
     }
+    if (!(await this.ensurePeriodDateAvailable(dateStr))) return;
     const d = new Date(dateStr);
     d.setHours(12, 0, 0, 0);
     try {
@@ -509,6 +516,20 @@ Page({
       if (hit) return hit;
     }
     return undefined;
+  },
+
+  async ensurePeriodDateAvailable(dateStr: string) {
+    try {
+      const events = await api.listEvents({ subject: 'wife', limit: 300 });
+      const conflict = findClosedCycleConflictDate(events, [dateStr]);
+      if (!conflict) return true;
+      wx.showToast({ icon: 'none', title: `${prettyDateLabel(conflict)} 已在已有周期里` });
+      return false;
+    } catch (e) {
+      console.warn('[home] validate period date failed', e);
+      wx.showToast({ icon: 'none', title: '校验失败，请重试' });
+      return false;
+    }
   },
 
 });
@@ -740,6 +761,48 @@ function categoryOrder(category: string): number {
     case 'note': return 5;
     default: return 99;
   }
+}
+
+function findClosedCycleConflictDate(events: AppEvent[], dates: string[]): string {
+  const ranges = buildClosedCycleRanges(events);
+  for (const date of dates) {
+    if (ranges.some(range => date >= range.startDate && date <= range.endDate)) {
+      return date;
+    }
+  }
+  return '';
+}
+
+function buildClosedCycleRanges(events: AppEvent[]): Array<{ startDate: string; endDate: string }> {
+  const valid = events.filter(e => !e.deleted_at && e.subject === 'wife' && !!e.occurred_at);
+  const startsAsc = valid
+    .filter(e => e.category === 'period_start')
+    .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+  const endsAsc = valid
+    .filter(e => e.category === 'period_end')
+    .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+  const usedEnds = new Set<string>();
+  const ranges: Array<{ startDate: string; endDate: string }> = [];
+
+  for (let i = 0; i < startsAsc.length; i++) {
+    const start = startsAsc[i];
+    const nextStart = startsAsc[i + 1];
+    const startTs = new Date(start.occurred_at).getTime();
+    const nextStartTs = nextStart ? new Date(nextStart.occurred_at).getTime() : Infinity;
+    const matchedEnd = endsAsc.find(end => {
+      if (usedEnds.has(end._id)) return false;
+      const endTs = new Date(end.occurred_at).getTime();
+      return endTs >= startTs && endTs < nextStartTs;
+    });
+    if (!matchedEnd) continue;
+    usedEnds.add(matchedEnd._id);
+    ranges.push({
+      startDate: ymd(new Date(start.occurred_at)),
+      endDate: ymd(new Date(matchedEnd.occurred_at)),
+    });
+  }
+
+  return ranges;
 }
 
 function asRecord(value: unknown): Record<string, any> {

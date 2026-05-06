@@ -3,7 +3,6 @@
 <scroll-view scroll-y enable-flex class="page-wrap">
   <!-- 主卡：下次大姨妈 -->
   <widget-card title="{{ nextLineLabel }}" sub="{{ inProgressBadge }}" accent="{{ true }}">
-    <view slot="header-action" class="hero-mood-btn" bindtap="onAddMoodNote">记录当下的心情</view>
     <view class="hero">
       <text class="hero-num">{{ daysToNext === null ? '—' : (daysToNext > 0 ? daysToNext : (daysToNext === 0 ? '今天' : '已超期')) }}</text>
       <text class="hero-unit" wx:if="{{ daysToNext !== null && daysToNext > 0 }}">天</text>
@@ -47,7 +46,7 @@
     <view class="card-title">本周期</view>
     <view class="row-between">
       <view class="muted">共记录</view>
-      <view>{{ events.length }} 条</view>
+      <view>{{ cycleRecordCount }} 条</view>
     </view>
     <view class="row-between">
       <view class="muted">总周期数</view>
@@ -76,6 +75,7 @@
 
     <!-- ===== Tab: 备注 ===== -->
     <block wx:if="{{ activeTab === 'note' }}">
+      <view class="mood-entry" bindtap="onAddMoodNote">记录当下的心情</view>
       <view wx:if="{{ groups.length === 0 }}" class="empty">
         <view class="empty-emoji">🌸</view>
         <view class="empty-text">还没有心情记录</view>

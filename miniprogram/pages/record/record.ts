@@ -159,6 +159,14 @@ Page({
       wx.showToast({ icon: 'none', title: '至少记点症状/备注，或选大姨妈日期' });
       return;
     }
+    const dateConflict = await this.findPeriodDateConflict();
+    if (dateConflict === '__validation_failed__') {
+      return;
+    }
+    if (dateConflict) {
+      wx.showToast({ icon: 'none', title: `${prettyDateLabel(dateConflict)} 已在已有周期里` });
+      return;
+    }
     this.setData({ submitting: true });
 
     await this.cleanupConflictingRangeStarts();
@@ -319,6 +327,30 @@ Page({
       it.category === 'note',
     );
   },
+
+  async findPeriodDateConflict() {
+    const dates = this.getSelectedPeriodDates();
+    if (this.data.subject !== 'wife' || dates.length === 0) return '';
+    try {
+      const events = await api.listEvents({ subject: 'wife', limit: 300 });
+      return findClosedCycleConflictDate(events, dates);
+    } catch (e) {
+      console.warn('[record] validate period date failed', e);
+      wx.showToast({ icon: 'none', title: '校验失败，请重试' });
+      return '__validation_failed__';
+    }
+  },
+
+  getSelectedPeriodDates() {
+    const dates: string[] = [];
+    if (this.data.timeMode === 'range' && this.data.periodStartDate) {
+      dates.push(this.data.periodStartDate);
+    }
+    if (this.data.timeMode === 'range' && this.data.periodEndDate) {
+      dates.push(this.data.periodEndDate);
+    }
+    return dates;
+  },
 });
 
 function toNoonIso(dateStr: string): string {
@@ -329,6 +361,48 @@ function toNoonIso(dateStr: string): string {
 
 function makeBatchId(): string {
   return `batch_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function findClosedCycleConflictDate(events: Array<{ _id: string; subject: Subject; category: string; occurred_at: string; deleted_at?: string }>, dates: string[]): string {
+  const ranges = buildClosedCycleRanges(events);
+  for (const date of dates) {
+    if (ranges.some(range => date >= range.startDate && date <= range.endDate)) {
+      return date;
+    }
+  }
+  return '';
+}
+
+function buildClosedCycleRanges(events: Array<{ _id: string; subject: Subject; category: string; occurred_at: string; deleted_at?: string }>) {
+  const valid = events.filter(e => !e.deleted_at && e.subject === 'wife' && !!e.occurred_at);
+  const startsAsc = valid
+    .filter(e => e.category === 'period_start')
+    .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+  const endsAsc = valid
+    .filter(e => e.category === 'period_end')
+    .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+  const usedEnds = new Set<string>();
+  const ranges: Array<{ startDate: string; endDate: string }> = [];
+
+  for (let i = 0; i < startsAsc.length; i++) {
+    const start = startsAsc[i];
+    const nextStart = startsAsc[i + 1];
+    const startTs = new Date(start.occurred_at).getTime();
+    const nextStartTs = nextStart ? new Date(nextStart.occurred_at).getTime() : Infinity;
+    const matchedEnd = endsAsc.find(end => {
+      if (usedEnds.has(end._id)) return false;
+      const endTs = new Date(end.occurred_at).getTime();
+      return endTs >= startTs && endTs < nextStartTs;
+    });
+    if (!matchedEnd) continue;
+    usedEnds.add(matchedEnd._id);
+    ranges.push({
+      startDate: ymd(new Date(start.occurred_at)),
+      endDate: ymd(new Date(matchedEnd.occurred_at)),
+    });
+  }
+
+  return ranges;
 }
 
 /** YYYY-MM-DD → "5月3日" / 跨年时显示 "25年12月3日" */
