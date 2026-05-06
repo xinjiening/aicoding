@@ -1,0 +1,80 @@
+<navigation-bar title="记一笔" back="{{ false }}" color="#2C2C2C" background="#FFF7F8"></navigation-bar>
+
+<scroll-view scroll-y enable-flex class="page-wrap">
+
+  <!-- 谁 -->
+  <view class="card">
+    <view class="card-title">关于谁</view>
+    <view class="row gap-12">
+      <view class="seg {{ subject === 'wife' ? 'seg-on' : '' }}" data-subject="wife" bindtap="onSubjectTap">老婆</view>
+      <view class="seg {{ subject === 'husband' ? 'seg-on' : '' }}" data-subject="husband" bindtap="onSubjectTap">我</view>
+    </view>
+  </view>
+
+  <!-- 时间 -->
+  <view class="card">
+    <view class="card-title">什么时候</view>
+    <view class="row gap-12">
+      <view class="seg {{ occurredAtLabel === '现在' ? 'seg-on' : '' }}" bindtap="onUseNow">现在</view>
+      <picker mode="date" value="{{ inputDate }}" bindchange="onDateChange">
+        <view class="seg {{ occurredAtLabel !== '现在' ? 'seg-on' : '' }}">{{ occurredAtLabel === '现在' ? '选日期…' : occurredAtLabel }}</view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 不适标签 -->
+  <view class="card">
+    <view class="card-title">不适标签</view>
+    <view class="card-sub">点一下选中（默认 2/5），再点逐级提高，超过 5 取消</view>
+    <view class="chips">
+      <view
+        wx:for="{{ symptomTags }}"
+        wx:key="key"
+        wx:for-item="tag"
+        class="chip {{ selectedSymptoms[tag.key] ? 'chip-active' : '' }}"
+        data-key="{{ tag.key }}"
+        bindtap="onSymptomTap"
+      >
+        <text>{{ tag.emoji }} {{ tag.label }}</text>
+        <text wx:if="{{ selectedSymptoms[tag.key] }}" class="sev"> · {{ selectedSymptoms[tag.key] }}/5</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 流量 -->
+  <view class="card">
+    <view class="card-title">流量</view>
+    <view class="chips">
+      <view
+        wx:for="{{ flowLevels }}"
+        wx:key="key"
+        wx:for-item="lv"
+        class="chip {{ selectedFlow === lv.key ? 'chip-active' : '' }}"
+        data-key="{{ lv.key }}"
+        bindtap="onFlowTap"
+      >{{ lv.label }}</view>
+    </view>
+  </view>
+
+  <!-- 备注 -->
+  <view class="card">
+    <view class="card-title">备注（情绪 / 用药 / 运动 / 睡眠 等）</view>
+    <textarea
+      class="ta"
+      maxlength="500"
+      placeholder="比如：老婆下午开始疼，不算重，准备多喝热水"
+      value="{{ noteText }}"
+      bindinput="onNoteInput"
+      auto-height
+    />
+    <view class="tiny muted right">{{ noteText.length }}/500</view>
+  </view>
+
+  <button class="btn-primary submit" bindtap="onSubmit" disabled="{{ submitting }}">
+    {{ submitting ? '保存中…' : '保存这笔' }}
+  </button>
+
+  <view class="hint">
+    💡 V1：本页采用快速标签录入。AI 自然语言录入将在 V1.1 加入（在这里加一个「自由说一句」输入框）。
+  </view>
+</scroll-view>

@@ -1,0 +1,43 @@
+<view class="cal">
+  <view class="cal-head">
+    <view class="nav" bindtap="prevMonth">‹</view>
+    <view class="label">{{ label }}</view>
+    <view class="nav" bindtap="nextMonth">›</view>
+  </view>
+
+  <view class="weekday-row">
+    <view class="weekday">日</view>
+    <view class="weekday">一</view>
+    <view class="weekday">二</view>
+    <view class="weekday">三</view>
+    <view class="weekday">四</view>
+    <view class="weekday">五</view>
+    <view class="weekday">六</view>
+  </view>
+
+  <view class="weeks">
+    <view class="week" wx:for="{{ weeks }}" wx:key="index" wx:for-item="row" wx:for-index="i">
+      <view
+        wx:for="{{ row }}"
+        wx:key="date"
+        wx:for-item="cell"
+        wx:for-index="j"
+        class="cell {{ cell.isPeriod ? 'period' : '' }} {{ cell.isPredicted ? 'predicted' : '' }} {{ cell.isToday ? 'today' : '' }} {{ cell.inMonth ? '' : 'dim' }}"
+        data-date="{{ cell.date }}"
+        bindtap="onDayTap"
+        hover-class="cell-hover"
+        hover-stay-time="80"
+      >
+        <view class="circle"></view>
+        <text class="num">{{ cell.day }}</text>
+        <view class="dot" wx:if="{{ cell.hasSymptom }}"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="legend">
+    <view class="lg"><view class="sw period"></view>经期</view>
+    <view class="lg"><view class="sw predicted"></view>预测</view>
+    <view class="lg"><view class="sw symptom"></view>有不适</view>
+  </view>
+</view>

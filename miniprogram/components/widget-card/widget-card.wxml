@@ -1,0 +1,9 @@
+<view class="wcard {{ accent ? 'accent' : '' }}" bindtap="onTap">
+  <view class="row-between">
+    <view class="title">{{ title }}</view>
+    <view class="sub" wx:if="{{ sub }}">{{ sub }}</view>
+  </view>
+  <view class="content">
+    <slot />
+  </view>
+</view>

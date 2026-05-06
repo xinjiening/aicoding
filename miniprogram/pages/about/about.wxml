@@ -1,0 +1,57 @@
+<navigation-bar title="我们" back="{{ false }}" color="#2C2C2C" background="#FFF7F8"></navigation-bar>
+
+<scroll-view scroll-y enable-flex class="page-wrap">
+  <view class="card">
+    <view class="card-title" bindtap="onTitleTap">关于「我们家」</view>
+    <view class="muted">夫妻共用的 AI 家庭仪表盘 · V1 经期助手</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">当前身份</view>
+    <view wx:if="{{ user }}" class="row-between">
+      <view class="muted">角色</view>
+      <view>{{ user.role === 'husband' ? '丈夫（主理人）' : (user.role === 'wife' ? '妻子' : '未识别') }}</view>
+    </view>
+    <view wx:if="{{ user }}" class="row-between">
+      <view class="muted">家庭 ID</view>
+      <view class="tiny">{{ user.family_id }}</view>
+    </view>
+    <view wx:if="{{ user }}" class="row-between">
+      <view class="muted">openid</view>
+      <view class="tiny mono">{{ user.openid }}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">运行模式</view>
+    <view class="row-between">
+      <view class="muted">云开发</view>
+      <view class="{{ cloudReady ? 'ok' : 'warn' }}">{{ cloudReady ? '已开通' : 'Mock 模式' }}</view>
+    </view>
+    <view wx:if="{{ !cloudReady }}" class="hint">
+      未开通时，所有数据存本地 storage（仅当前设备）。
+      开通步骤：
+      <view class="step">1. 微信开发者工具 → 顶部「云开发」 → 开通环境，拿 envId</view>
+      <view class="step">2. 编辑 <text class="mono" bindtap="onCopyEnv">miniprogram/constants.ts</text>，把 CLOUD_ENV 改成 envId</view>
+      <view class="step">3. 在 cloudfunctions/ 下右键每个云函数 → 上传并部署（whoami / ping / home-bundle / data-rw）</view>
+      <view class="step">4. 云开发控制台 → 数据库，建 2 个集合：families、events，权限设为「仅创建者可读写」</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">数据导出</view>
+    <view class="muted">V1 暂不做产品级导出；可在云开发控制台手动导出 JSON。</view>
+    <view class="link" bindtap="onExport">了解详情 ›</view>
+  </view>
+
+  <view wx:if="{{ showHidden }}" class="card debug">
+    <view class="card-title">🛠 调试菜单（仅 Mock 模式有效）</view>
+    <view class="row gap-12 mt">
+      <button class="btn-secondary flex" bindtap="onSwitchToHusband">切换：丈夫</button>
+      <button class="btn-secondary flex" bindtap="onSwitchToWife">切换：妻子</button>
+    </view>
+    <button class="btn-ghost mt" bindtap="onResetMock">清空本地 Mock 数据</button>
+  </view>
+
+  <view class="footnote">v0.1.0 · 设计文档：<text class="mono">~/.gstack/projects/ai-family/</text></view>
+</scroll-view>

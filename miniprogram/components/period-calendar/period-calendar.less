@@ -1,0 +1,131 @@
+.cal {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(233, 30, 99, 0.06);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 16rpx 16rpx;
+}
+.label {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2C2C2C;
+}
+.nav {
+  width: 56rpx; height: 56rpx;
+  border-radius: 28rpx;
+  background: #FCE4EC;
+  color: #C2185B;
+  font-size: 36rpx;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.weekday-row {
+  display: flex;
+  margin-bottom: 8rpx;
+}
+.weekday {
+  flex: 1;
+  text-align: center;
+  font-size: 22rpx;
+  color: #999;
+  padding: 8rpx 0;
+}
+
+.weeks {
+  display: flex;
+  flex-direction: column;
+}
+.week {
+  display: flex;
+}
+.cell {
+  flex: 1;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 4rpx;
+}
+.cell-hover .circle {
+  background: #FCE4EC;
+}
+.cell .num {
+  font-size: 26rpx;
+  color: #2C2C2C;
+  position: relative;
+  z-index: 2;
+}
+.cell.dim .num { color: #CCC; }
+
+/* 圆圈底层 - 默认透明 */
+.cell .circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 64rpx;
+  height: 64rpx;
+  margin-left: -32rpx;
+  margin-top: -32rpx;
+  border-radius: 50%;
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+/* 经期：实心红圆 */
+.cell.period .circle {
+  background: #E91E63;
+  border: 4rpx solid #E91E63;
+}
+.cell.period .num { color: #FFFFFF; font-weight: 700; }
+
+/* 预测：虚线粉圈 */
+.cell.predicted .circle {
+  background: transparent;
+  border: 2rpx dashed #E91E63;
+}
+
+/* 今天（无经期）：深色实线圈 */
+.cell.today .circle {
+  border: 3rpx solid #1F1F1F;
+}
+.cell.today .num { font-weight: 700; }
+
+/* 今天 + 经期：红圆 + 外圈白边 + 阴影描边，最强提示 */
+.cell.today.period .circle {
+  background: #E91E63;
+  border: 3rpx solid #FFFFFF;
+  box-shadow: 0 0 0 3rpx #1F1F1F;
+}
+
+.dot {
+  position: absolute;
+  top: 6rpx;
+  right: 14rpx;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #FFB74D;
+  z-index: 3;
+}
+
+.legend {
+  display: flex;
+  gap: 24rpx;
+  padding: 16rpx 8rpx 0;
+  font-size: 22rpx;
+  color: #888;
+}
+.lg { display: flex; align-items: center; gap: 8rpx; }
+.sw {
+  width: 20rpx; height: 20rpx; border-radius: 6rpx;
+}
+.sw.period { background: #E91E63; }
+.sw.predicted { background: transparent; border: 2rpx dashed #E91E63; }
+.sw.symptom { background: #FFB74D; border-radius: 50%; }

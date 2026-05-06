@@ -1,0 +1,1 @@
+<view class="badge {{ isSelf ? 'self' : 'other' }}">{{ label }}</view>

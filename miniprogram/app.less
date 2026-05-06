@@ -1,0 +1,131 @@
+/* 全局样式 — V1 设计语言：温暖现代、克制、可读 */
+
+page {
+  background: #FFF7F8;
+  color: #1F1F1F;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.55;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 通用卡片 */
+.card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 24rpx rgba(233, 30, 99, 0.06);
+  margin-bottom: 24rpx;
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2C2C2C;
+  margin-bottom: 16rpx;
+}
+
+.card-sub {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+/* 主按钮 */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96rpx;
+  background: linear-gradient(135deg, #E91E63 0%, #F06292 100%);
+  color: #FFFFFF;
+  border-radius: 48rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  box-shadow: 0 8rpx 24rpx rgba(233, 30, 99, 0.3);
+  transition: transform 0.1s;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80rpx;
+  background: #FFFFFF;
+  color: #E91E63;
+  border: 2rpx solid #F8BBD0;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #888;
+  font-size: 26rpx;
+  padding: 16rpx 24rpx;
+}
+
+/* 标签 chip */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 12rpx 24rpx;
+  border-radius: 32rpx;
+  background: #FCE4EC;
+  color: #C2185B;
+  font-size: 26rpx;
+  margin: 8rpx;
+}
+
+.chip-active {
+  background: #E91E63;
+  color: #FFFFFF;
+}
+
+/* 文字辅助 */
+.muted { color: #999999; }
+.tiny { font-size: 22rpx; color: #B0B0B0; }
+.bold { font-weight: 600; }
+.text-rose { color: #E91E63; }
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gap-12 { gap: 12rpx; }
+.gap-24 { gap: 24rpx; }
+
+.divider {
+  height: 2rpx;
+  background: #FCE4EC;
+  margin: 24rpx 0;
+}
+
+/* 空态 */
+.empty {
+  text-align: center;
+  padding: 80rpx 32rpx;
+  color: #B0B0B0;
+}
+
+.empty-emoji { font-size: 80rpx; margin-bottom: 16rpx; }
+.empty-text { font-size: 28rpx; }
+
+/* page 容器 */
+.page-wrap {
+  padding: 32rpx 32rpx 160rpx;
+}

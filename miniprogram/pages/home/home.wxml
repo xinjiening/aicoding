@@ -1,0 +1,76 @@
+<navigation-bar title="我们家" back="{{ false }}" color="#2C2C2C" background="#FFF7F8"></navigation-bar>
+
+<scroll-view scroll-y enable-flex class="page-wrap">
+  <!-- 主卡：下次大姨妈 -->
+  <widget-card title="{{ nextLineLabel }}" sub="{{ inProgressBadge }}" accent="{{ true }}" bindtap="goPeriod">
+    <view class="hero">
+      <text class="hero-num">{{ daysToNext === null ? '—' : (daysToNext > 0 ? daysToNext : (daysToNext === 0 ? '今天' : '已超期')) }}</text>
+      <text class="hero-unit" wx:if="{{ daysToNext !== null && daysToNext > 0 }}">天</text>
+    </view>
+    <view class="hero-sub">{{ nextDescribe }}<text wx:if="{{ predictedNextText !== '—' }}" class="hero-sub-date"> · {{ predictedNextText }}</text></view>
+    <view class="row gap-24 hero-meta">
+      <view class="meta">
+        <view class="meta-k">上次大姨妈</view>
+        <view class="meta-v">{{ lastDateText }}</view>
+        <view class="meta-foot" wx:if="{{ lastSinceText }}">{{ lastSinceText }}</view>
+      </view>
+      <view class="meta">
+        <view class="meta-k">平均周期</view>
+        <view class="meta-v">{{ avgCycleText }}</view>
+        <view class="meta-foot" wx:if="{{ stats.totalCycles }}">已记 {{ stats.totalCycles }} 个周期</view>
+      </view>
+    </view>
+  </widget-card>
+
+  <!-- CTA 按钮 -->
+  <view class="cta">
+    <button class="btn-primary" bindtap="onMarkPeriodStart">今天来了</button>
+    <view class="cta-row">
+      <button class="btn-secondary" bindtap="onMarkPeriodEnd">这次结束了</button>
+      <button class="btn-secondary" bindtap="goRecord">记一笔</button>
+    </view>
+  </view>
+
+  <!-- 最近备注 - 按日期分组 -->
+  <widget-card title="最近备注" sub="{{ recentGroups.length === 0 ? '还没有' : '' }}">
+    <view wx:if="{{ recentGroups.length === 0 }}" class="empty">
+      <view class="empty-emoji">📝</view>
+      <view class="empty-text">点「记一笔」给老婆记点什么</view>
+    </view>
+    <view wx:else class="timeline">
+      <view class="day-group" wx:for="{{ recentGroups }}" wx:key="dateKey" wx:for-item="g">
+        <view class="day-head">
+          <view class="day-label">{{ g.dateLabel }}</view>
+          <view class="day-line"></view>
+        </view>
+        <view class="day-item" wx:for="{{ g.items }}" wx:key="id" wx:for-item="item">
+          <view class="day-time">{{ item.timeLabel }}</view>
+          <view class="day-body">
+            <view class="row gap-12">
+              <recorder-badge label="{{ item.badge }}" isSelf="{{ item.isSelf }}" />
+            </view>
+            <view class="item-text">{{ item.text }}</view>
+          </view>
+        </view>
+      </view>
+      <view class="row-between more" bindtap="goPeriod">
+        <view class="muted">查看全部</view>
+        <view class="muted">›</view>
+      </view>
+    </view>
+  </widget-card>
+
+  <!-- 未来 widgets 占位 -->
+  <view class="future">未来会加：账本 · 孩子记录 · 共同清单</view>
+
+  <!-- mock 模式提示 -->
+  <view wx:if="{{ isMock }}" class="mock-hint">
+    🛠 当前为 Mock 模式（云开发未配置）。开通云开发后改 constants.ts 的 CLOUD_ENV
+  </view>
+</scroll-view>
+
+<!-- Undo 浮层 -->
+<view class="undo-bar" wx:if="{{ showUndo }}">
+  <text class="undo-text">5 秒内可撤销</text>
+  <view class="undo-btn" bindtap="onUndo">撤销</view>
+</view>

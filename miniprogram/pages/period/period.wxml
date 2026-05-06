@@ -1,0 +1,121 @@
+<navigation-bar title="周期" back="{{ false }}" color="#2C2C2C" background="#FFF7F8"></navigation-bar>
+
+<scroll-view scroll-y enable-flex class="page-wrap">
+  <period-calendar
+    period-events="{{ events }}"
+    predicted-next-start="{{ predictedNextStart }}"
+    bind:tap="onCalendarTap"
+  />
+
+  <view class="card" wx:if="{{ stats }}">
+    <view class="card-title">本周期</view>
+    <view class="row-between">
+      <view class="muted">共记录</view>
+      <view>{{ events.length }} 条</view>
+    </view>
+    <view class="row-between">
+      <view class="muted">总周期数</view>
+      <view>{{ stats.totalCycles }} 个</view>
+    </view>
+    <view class="row-between" wx:if="{{ stats.lastDurationDays !== null }}">
+      <view class="muted">上次持续</view>
+      <view>{{ stats.lastDurationDays }} 天</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="tabs">
+      <view
+        class="tab {{ activeTab === 'note' ? 'tab-on' : '' }}"
+        data-tab="note"
+        bindtap="onTabChange"
+      >📝 备注</view>
+      <view
+        class="tab {{ activeTab === 'cycle' ? 'tab-on' : '' }}"
+        data-tab="cycle"
+        bindtap="onTabChange"
+      >🌹 大姨妈</view>
+    </view>
+
+    <!-- ===== Tab: 备注 ===== -->
+    <block wx:if="{{ activeTab === 'note' }}">
+      <view wx:if="{{ groups.length === 0 }}" class="empty">
+        <view class="empty-emoji">🌸</view>
+        <view class="empty-text">还没有任何记录</view>
+      </view>
+      <view wx:else class="timeline">
+        <view class="day-group" wx:for="{{ groups }}" wx:key="dateKey" wx:for-item="g">
+          <view class="day-head">
+            <view class="day-label">{{ g.dateLabel }}</view>
+            <view class="day-line"></view>
+            <view class="day-count">{{ g.items.length }} 条</view>
+          </view>
+          <view
+            wx:for="{{ g.items }}"
+            wx:key="id"
+            wx:for-item="item"
+            class="day-item"
+            data-id="{{ item.id }}"
+            bindlongpress="onLongPressItem"
+          >
+            <view class="day-time">{{ item.timeLabel }}</view>
+            <view class="day-body">
+              <view class="row-between">
+                <recorder-badge label="{{ item.badge }}" isSelf="{{ item.isSelf }}" />
+                <view class="tiny muted" wx:if="{{ item.canDelete }}">长按删除</view>
+              </view>
+              <view class="row-text">{{ item.text }}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- ===== Tab: 大姨妈 ===== -->
+    <block wx:else>
+      <view wx:if="{{ cycles.length === 0 }}" class="empty">
+        <view class="empty-emoji">🌹</view>
+        <view class="empty-text">还没有记录过大姨妈</view>
+      </view>
+      <view wx:else class="cycle-list">
+        <view class="cycle-card {{ c.ongoing ? 'cycle-ongoing' : '' }}" wx:for="{{ cycles }}" wx:key="id" wx:for-item="c">
+          <view class="cycle-row">
+            <view class="cycle-dot"></view>
+            <view class="cycle-range">
+              <text class="cycle-start">{{ c.startLabel }}</text>
+              <text class="cycle-tilde">　～　</text>
+              <text class="cycle-end {{ c.ongoing ? 'cycle-end-ongoing' : '' }}">{{ c.endLabel }}</text>
+            </view>
+          </view>
+          <view class="cycle-meta">
+            <view class="cycle-duration">{{ c.durationLabel }}</view>
+            <picker
+              wx:if="{{ c.ongoing || c.endLabel === '未记结束' }}"
+              mode="date"
+              start="{{ c.startDate }}"
+              end="{{ todayStr }}"
+              value="{{ todayStr }}"
+              data-start-date="{{ c.startDate }}"
+              bindchange="onSetEndDate"
+            >
+              <view class="cycle-action">⏱ 指定结束时间</view>
+            </picker>
+          </view>
+
+          <view wx:if="{{ c.notes.length > 0 }}" class="cycle-notes-wrap">
+            <view class="cycle-notes-toggle" data-id="{{ c.id }}" bindtap="onToggleCycle">
+              <text class="cycle-toggle-icon">{{ c.expanded ? '▼' : '▶' }}</text>
+              <text>本期相关备注 {{ c.notes.length }} 条</text>
+            </view>
+            <view wx:if="{{ c.expanded }}" class="cycle-notes">
+              <view class="cycle-note" wx:for="{{ c.notes }}" wx:key="id" wx:for-item="n">
+                <text class="cycle-note-when">{{ n.dateLabel }} {{ n.timeLabel }}</text>
+                <text class="cycle-note-text">{{ n.text }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+</scroll-view>

@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "widget-card": "../../components/widget-card/widget-card",
+    "recorder-badge": "../../components/recorder-badge/recorder-badge",
+    "navigation-bar": "../../components/navigation-bar/navigation-bar"
+  }
+}
