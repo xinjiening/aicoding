@@ -1,4 +1,5 @@
 .seg {
+  width: 100%;
   flex: 1;
   text-align: center;
   padding: 20rpx 0;
@@ -7,6 +8,7 @@
   font-size: 28rpx;
   color: #999;
   background: #FFFFFF;
+  box-sizing: border-box;
 }
 .seg-on {
   background: #E91E63;
@@ -16,6 +18,20 @@
 .row { display: flex; align-items: center; }
 .gap-12 { gap: 12rpx; }
 .flex { flex: 1; }
+.seg-row { width: 100%; }
+.seg-item { flex: 1; min-width: 0; }
+.range-panel { margin-top: 20rpx; }
+
+.clear-row {
+  justify-content: flex-end;
+  gap: 24rpx;
+  margin-top: 16rpx;
+}
+
+.text-btn {
+  font-size: 24rpx;
+  color: #C2185B;
+}
 
 .chips {
   display: flex;

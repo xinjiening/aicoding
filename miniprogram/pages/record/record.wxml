@@ -5,20 +5,45 @@
   <!-- 谁 -->
   <view class="card">
     <view class="card-title">关于谁</view>
-    <view class="row gap-12">
-      <view class="seg {{ subject === 'wife' ? 'seg-on' : '' }}" data-subject="wife" bindtap="onSubjectTap">老婆</view>
-      <view class="seg {{ subject === 'husband' ? 'seg-on' : '' }}" data-subject="husband" bindtap="onSubjectTap">我</view>
+    <view class="row gap-12 seg-row">
+      <view class="seg-item">
+        <view class="seg {{ subject === 'wife' ? 'seg-on' : '' }}" data-subject="wife" bindtap="onSubjectTap">老婆</view>
+      </view>
+      <view class="seg-item">
+        <view class="seg {{ subject === 'husband' ? 'seg-on' : '' }}" data-subject="husband" bindtap="onSubjectTap">我</view>
+      </view>
     </view>
   </view>
 
   <!-- 时间 -->
   <view class="card">
     <view class="card-title">什么时候</view>
-    <view class="row gap-12">
-      <view class="seg {{ occurredAtLabel === '现在' ? 'seg-on' : '' }}" bindtap="onUseNow">现在</view>
-      <picker mode="date" value="{{ inputDate }}" bindchange="onDateChange">
-        <view class="seg {{ occurredAtLabel !== '现在' ? 'seg-on' : '' }}">{{ occurredAtLabel === '现在' ? '选日期…' : occurredAtLabel }}</view>
-      </picker>
+    <view class="row gap-12 seg-row">
+      <view class="seg-item">
+        <view class="seg {{ timeMode === 'now' ? 'seg-on' : '' }}" bindtap="onUseNow">现在</view>
+      </view>
+      <view class="seg-item">
+        <view class="seg {{ timeMode === 'range' ? 'seg-on' : '' }}" bindtap="onUseDateRange">选择日期</view>
+      </view>
+    </view>
+    <view wx:if="{{ timeMode === 'range' }}" class="range-panel">
+      <view class="card-sub">开始和结束都能记；只记开始也可以，之后去周期页再补结束</view>
+      <view class="row gap-12 seg-row">
+        <view class="seg-item">
+          <picker mode="date" value="{{ periodStartDate }}" end="{{ todayDate }}" bindchange="onPeriodStartDateChange">
+            <view class="seg {{ periodStartDate ? 'seg-on' : '' }}">{{ periodStartDate || '选择开始日期' }}</view>
+          </picker>
+        </view>
+        <view class="seg-item">
+          <picker mode="date" value="{{ periodEndDate }}" start="{{ periodStartDate || '' }}" end="{{ todayDate }}" bindchange="onPeriodEndDateChange">
+            <view class="seg {{ periodEndDate ? 'seg-on' : '' }}">{{ periodEndDate || '选择结束日期' }}</view>
+          </picker>
+        </view>
+      </view>
+      <view class="row clear-row">
+        <view class="text-btn" bindtap="onClearPeriodStart">清空开始</view>
+        <view class="text-btn" bindtap="onClearPeriodEnd">清空结束</view>
+      </view>
     </view>
   </view>
 
