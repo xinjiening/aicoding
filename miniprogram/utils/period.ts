@@ -16,6 +16,12 @@ export function daysBetween(later: string | Date, earlier: string | Date): numbe
   return Math.floor((l.getTime() - e.getTime()) / ONE_DAY_MS);
 }
 
+export function calendarDaysBetween(later: string | Date, earlier: string | Date): number {
+  const l = startOfLocalDay(typeof later === 'string' ? new Date(later) : later);
+  const e = startOfLocalDay(typeof earlier === 'string' ? new Date(earlier) : earlier);
+  return Math.floor((l.getTime() - e.getTime()) / ONE_DAY_MS);
+}
+
 function median(nums: number[]): number {
   if (nums.length === 0) return NaN;
   const sorted = [...nums].sort((a, b) => a - b);
@@ -72,12 +78,11 @@ export function calculatePeriodStats(
   const lastStart = periodStarts[0].occurred_at;
   const daysSince = daysBetween(new Date(), lastStart);
 
-  const lastEndEvent = periodEnds.find(
-    end => new Date(end.occurred_at).getTime() > new Date(lastStart).getTime(),
-  );
+  const lastStartEvent = periodStarts[0];
+  const lastEndEvent = findMatchingEnd(periodEnds, lastStartEvent);
   const lastEnd = lastEndEvent ? lastEndEvent.occurred_at : null;
   const inProgress = !lastEnd;
-  const lastDurationDays = lastEnd ? Math.max(1, daysBetween(lastEnd, lastStart) + 1) : null;
+  const lastDurationDays = lastEnd ? Math.max(1, calendarDaysBetween(lastEnd, lastStart) + 1) : null;
 
   // 计算 avgCycleDays：手动 > 自动 > null
   const manualOverride = isValidManualAvg(manualAvgCycleDays) ? manualAvgCycleDays : null;
@@ -120,6 +125,20 @@ export function calculatePeriodStats(
     inProgress,
     totalCycles: periodStarts.length,
   };
+}
+
+function findMatchingEnd(periodEnds: AppEvent[], startEvent: AppEvent): AppEvent | undefined {
+  if (startEvent.batch_id) {
+    const byBatch = periodEnds.find(end => end.batch_id === startEvent.batch_id);
+    if (byBatch) return byBatch;
+  }
+  return periodEnds.find(
+    end => new Date(end.occurred_at).getTime() >= new Date(startEvent.occurred_at).getTime(),
+  );
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 export function daysUntilPredicted(predicted: string | null): number | null {

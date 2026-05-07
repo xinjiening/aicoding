@@ -9,6 +9,12 @@ interface IAppOption {
     lastPingTs: number;
     batchMode?: boolean;
     pendingRecordDate?: string;
+    pendingRecordDraft?: {
+      startDate?: string;
+      endDate?: string;
+      subject?: 'wife' | 'husband';
+      batchId?: string;
+    };
     pendingPeriodTab?: 'note' | 'cycle';
   };
   ensureCloud(): Promise<UserInfo | null>;

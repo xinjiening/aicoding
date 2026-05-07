@@ -137,9 +137,10 @@
               end="{{ todayStr }}"
               value="{{ todayStr }}"
               data-start-date="{{ c.startDate }}"
+              data-batch-id="{{ c.batchId }}"
               bindchange="onSetEndDate"
             >
-              <view class="cycle-action">⏱ 指定结束时间</view>
+              <view class="cycle-action">⏱ 去记结束和详情</view>
             </picker>
           </view>
 

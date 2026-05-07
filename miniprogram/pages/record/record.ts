@@ -1,7 +1,7 @@
 import { api } from '../../utils/api';
 import { SYMPTOM_TAGS, FLOW_LEVELS, SEVERITY_LABELS } from '../../constants';
 import { ymd } from '../../utils/format';
-import type { Subject, UserInfo, EventCategory, EventSubtype, EventPayload } from '../../types/event';
+import type { UserInfo, EventCategory, EventSubtype, EventPayload } from '../../types/event';
 
 const app = getApp<IAppOption>();
 
@@ -18,7 +18,6 @@ interface QueueItem {
 Page({
   data: {
     user: null as UserInfo | null,
-    subject: 'wife' as Subject,
     selectedSymptoms: {} as Record<string, number>, // subtype → severity 1-5
     selectedFlow: '' as string,
     noteText: '',
@@ -29,6 +28,7 @@ Page({
     flowLevels: FLOW_LEVELS,
     severityLabels: SEVERITY_LABELS,
     todayDate: '',
+    periodBatchId: '',
     periodStartDate: '',
     periodStartLabel: '',
     periodEndDate: '',
@@ -37,13 +37,20 @@ Page({
 
   onLoad(opts: { date?: string }) {
     this.setData({ todayDate: ymd(new Date()) });
-    if (opts.date) {
+    if (app.globalData.pendingRecordDraft) {
+      this.applyPendingDraft();
+    } else if (opts.date) {
       this.applyRangeDate(opts.date);
     }
     this.loadUser();
   },
 
   onShow() {
+    if (app.globalData.pendingRecordDraft) {
+      this.applyPendingDraft();
+      app.globalData.pendingRecordDate = undefined;
+      return;
+    }
     // 日历点击 → switchTab('record') 后通过 globalData 传递日期
     const pending = app.globalData.pendingRecordDate;
     if (pending) {
@@ -55,11 +62,26 @@ Page({
   applyRangeDate(date: string) {
     this.setData({
       timeMode: 'range',
+      periodBatchId: '',
       periodStartDate: date,
       periodStartLabel: prettyDateLabel(date),
       periodEndDate: '',
       periodEndLabel: '',
     });
+  },
+
+  applyPendingDraft() {
+    const draft = app.globalData.pendingRecordDraft;
+    if (!draft) return;
+    this.setData({
+      timeMode: 'range',
+      periodBatchId: draft.batchId || '',
+      periodStartDate: draft.startDate || '',
+      periodStartLabel: draft.startDate ? prettyDateLabel(draft.startDate) : '',
+      periodEndDate: draft.endDate || '',
+      periodEndLabel: draft.endDate ? prettyDateLabel(draft.endDate) : '',
+    });
+    app.globalData.pendingRecordDraft = undefined;
   },
 
   async loadUser() {
@@ -69,11 +91,6 @@ Page({
     } catch (e) {
       console.warn('[record] load user failed', e);
     }
-  },
-
-  onSubjectTap(e: WechatMiniprogram.TouchEvent) {
-    const subject = (e.currentTarget.dataset as { subject: Subject }).subject;
-    this.setData({ subject });
   },
 
   onSymptomTap(e: WechatMiniprogram.TouchEvent) {
@@ -102,6 +119,7 @@ Page({
   onUseNow() {
     this.setData({
       timeMode: 'now',
+      periodBatchId: '',
       periodStartDate: '',
       periodStartLabel: '',
       periodEndDate: '',
@@ -142,6 +160,7 @@ Page({
   onClearPeriodStart() {
     // 清开始时，结束也跟着清掉（保持语义干净）
     this.setData({
+      periodBatchId: '',
       periodStartDate: '',
       periodStartLabel: '',
       periodEndDate: '',
@@ -160,17 +179,17 @@ Page({
       return;
     }
     const dateConflict = await this.findPeriodDateConflict();
-    if (dateConflict === '__validation_failed__') {
+    if (dateConflict.status === 'failed') {
       return;
     }
-    if (dateConflict) {
-      wx.showToast({ icon: 'none', title: `${prettyDateLabel(dateConflict)} 已在已有周期里` });
+    if (dateConflict.status === 'blocked') {
+      wx.showToast({ icon: 'none', title: '已在大姨妈期间' });
       return;
     }
     this.setData({ submitting: true });
 
     await this.cleanupConflictingRangeStarts();
-    const sharedBatchId = this.shouldUseSharedBatch(items) ? makeBatchId() : '';
+    const sharedBatchId = this.data.periodBatchId || (this.shouldUseSharedBatch(items) ? makeBatchId() : '');
 
     let okCount = 0;
     let dedupedCount = 0;
@@ -178,7 +197,7 @@ Page({
     for (const it of items) {
       try {
         const res = await api.createEvent({
-          subject: this.data.subject,
+          subject: 'wife',
           category: it.category,
           subtype: it.subtype,
           payload: it.payload,
@@ -220,8 +239,8 @@ Page({
    * 会把周期拆成「前一段未结束 + 当天单日周期」。这里在提交前做一次冲突清理。
    */
   async cleanupConflictingRangeStarts() {
-    const { subject, timeMode, periodStartDate, periodEndDate } = this.data;
-    if (subject !== 'wife' || timeMode !== 'range') return;
+    const { timeMode, periodStartDate, periodEndDate } = this.data;
+    if (timeMode !== 'range') return;
     if (!periodStartDate || !periodEndDate) return;
     if (periodStartDate >= periodEndDate) return;
 
@@ -307,10 +326,14 @@ Page({
       periodStartLabel: '',
       periodEndDate: '',
       periodEndLabel: '',
+      periodBatchId: '',
     });
   },
 
   getDefaultOccurredAt() {
+    if (this.data.timeMode === 'range' && this.data.periodBatchId && this.data.periodEndDate) {
+      return toNoonIso(this.data.periodEndDate);
+    }
     if (this.data.timeMode === 'range' && this.data.periodStartDate) {
       return toNoonIso(this.data.periodStartDate);
     }
@@ -318,7 +341,6 @@ Page({
   },
 
   shouldUseSharedBatch(items: QueueItem[]) {
-    if (this.data.subject !== 'wife') return false;
     return items.some(it =>
       it.category === 'period_start' ||
       it.category === 'period_end' ||
@@ -329,22 +351,32 @@ Page({
   },
 
   async findPeriodDateConflict() {
-    const dates = this.getSelectedPeriodDates();
-    if (this.data.subject !== 'wife' || dates.length === 0) return '';
+    const dates = this.getBlockedValidationDates();
+    if (dates.length === 0) {
+      return { status: 'ok' as const };
+    }
+    if (this.data.periodBatchId) {
+      return { status: 'ok' as const };
+    }
     try {
       const events = await api.listEvents({ subject: 'wife', limit: 300 });
-      return findClosedCycleConflictDate(events, dates);
+      const blockedDate = findClosedCycleConflictDate(events, dates);
+      return blockedDate
+        ? { status: 'blocked' as const, date: blockedDate }
+        : { status: 'ok' as const };
     } catch (e) {
       console.warn('[record] validate period date failed', e);
       wx.showToast({ icon: 'none', title: '校验失败，请重试' });
-      return '__validation_failed__';
+      return { status: 'failed' as const };
     }
   },
 
-  getSelectedPeriodDates() {
+  getBlockedValidationDates() {
     const dates: string[] = [];
     if (this.data.timeMode === 'range' && this.data.periodStartDate) {
       dates.push(this.data.periodStartDate);
+    } else if (this.data.timeMode === 'now') {
+      dates.push(ymd(new Date()));
     }
     if (this.data.timeMode === 'range' && this.data.periodEndDate) {
       dates.push(this.data.periodEndDate);
@@ -363,8 +395,8 @@ function makeBatchId(): string {
   return `batch_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function findClosedCycleConflictDate(events: Array<{ _id: string; subject: Subject; category: string; occurred_at: string; deleted_at?: string }>, dates: string[]): string {
-  const ranges = buildClosedCycleRanges(events);
+function findClosedCycleConflictDate(events: Array<{ _id: string; subject: 'wife' | 'husband'; category: string; occurred_at: string; deleted_at?: string }>, dates: string[]): string {
+  const ranges = buildBlockedCycleRanges(events);
   for (const date of dates) {
     if (ranges.some(range => date >= range.startDate && date <= range.endDate)) {
       return date;
@@ -373,7 +405,7 @@ function findClosedCycleConflictDate(events: Array<{ _id: string; subject: Subje
   return '';
 }
 
-function buildClosedCycleRanges(events: Array<{ _id: string; subject: Subject; category: string; occurred_at: string; deleted_at?: string }>) {
+function buildBlockedCycleRanges(events: Array<{ _id: string; subject: 'wife' | 'husband'; category: string; occurred_at: string; deleted_at?: string }>) {
   const valid = events.filter(e => !e.deleted_at && e.subject === 'wife' && !!e.occurred_at);
   const startsAsc = valid
     .filter(e => e.category === 'period_start')
@@ -394,11 +426,10 @@ function buildClosedCycleRanges(events: Array<{ _id: string; subject: Subject; c
       const endTs = new Date(end.occurred_at).getTime();
       return endTs >= startTs && endTs < nextStartTs;
     });
-    if (!matchedEnd) continue;
-    usedEnds.add(matchedEnd._id);
+    if (matchedEnd) usedEnds.add(matchedEnd._id);
     ranges.push({
       startDate: ymd(new Date(start.occurred_at)),
-      endDate: ymd(new Date(matchedEnd.occurred_at)),
+      endDate: matchedEnd ? ymd(new Date(matchedEnd.occurred_at)) : '9999-12-31',
     });
   }
 

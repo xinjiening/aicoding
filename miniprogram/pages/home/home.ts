@@ -1,5 +1,5 @@
 import { api } from '../../utils/api';
-import { calculatePeriodStats, daysBetween, describeNext, daysUntilPredicted } from '../../utils/period';
+import { calculatePeriodStats, calendarDaysBetween, describeNext, daysUntilPredicted } from '../../utils/period';
 import { dateGroupLabel, fmtMonthDay, fmtTime, fmtYMD, ymd } from '../../utils/format';
 import { recorderLabel, canSoftDelete, nextLine } from '../../utils/auth';
 import type { AppEvent, PeriodStats, UserInfo } from '../../types/event';
@@ -36,6 +36,7 @@ interface CycleRecordVM {
 
 interface CycleVM {
   id: string;
+  batchId: string;
   startDate: string;
   startLabel: string;
   endDate: string | null;
@@ -220,14 +221,19 @@ Page({
   async onMarkPeriodStart() {
     const { user } = this.data;
     if (!user) return;
-    if (!(await this.ensurePeriodDateAvailable(ymd(new Date())))) return;
+    const today = ymd(new Date());
+    if (!(await this.ensurePeriodDateAvailable(today))) return;
     wx.vibrateShort({ type: 'light' });
+    const batchId = makeBatchId();
+    const occurredAt = new Date().toISOString();
 
     try {
       const result = await api.createEvent({
         subject: 'wife',
         category: 'period_start',
         payload: { is_estimated: false, expected_end_offset_days: 5 },
+        occurred_at: occurredAt,
+        batch_id: batchId,
       });
       if (result.deduped) {
         wx.showToast({ icon: 'none', title: '今天已经记过啦' });
@@ -249,13 +255,18 @@ Page({
       wx.showToast({ icon: 'none', title: '请先记录开始时间', duration: 1800 });
       return;
     }
-    if (!(await this.ensurePeriodDateAvailable(ymd(new Date())))) return;
+    const today = ymd(new Date());
+    if (!(await this.ensurePeriodDateAvailable(today))) return;
     wx.vibrateShort({ type: 'light' });
+    const cycle = this.findLatestOpenCycle();
+    const occurredAt = new Date().toISOString();
     try {
       const result = await api.createEvent({
         subject: 'wife',
         category: 'period_end',
         payload: { is_estimated: false },
+        occurred_at: occurredAt,
+        batch_id: cycle ? cycle.batchId : undefined,
       });
       if (result.deduped) {
         wx.showToast({ icon: 'none', title: '今天已经记过啦' });
@@ -338,6 +349,10 @@ Page({
   async submitMark(category: 'period_start' | 'period_end', occurredAt: string, okMsg: string) {
     const dateStr = ymd(new Date(occurredAt));
     if (!(await this.ensurePeriodDateAvailable(dateStr))) return;
+    const openCycle = this.findOpenCycleByDate(dateStr);
+    const batchId = category === 'period_start'
+      ? makeBatchId()
+      : (openCycle ? openCycle.batchId : undefined);
     try {
       const result = await api.createEvent({
         subject: 'wife',
@@ -347,6 +362,7 @@ Page({
           : { is_estimated: false },
         occurred_at: occurredAt,
         source: 'manual',
+        batch_id: batchId,
       });
       if (result.deduped) {
         wx.showToast({ icon: 'none', title: '这一天已经记过啦' });
@@ -377,33 +393,21 @@ Page({
 
   /** 给「未结束」的周期补一个 period_end */
   async onSetEndDate(e: WechatMiniprogram.PickerChange) {
-    const dataset = e.currentTarget.dataset as { startDate: string };
+    const dataset = e.currentTarget.dataset as { startDate: string; batchId?: string };
     const dateStr = String(e.detail.value);
     if (dateStr < dataset.startDate) {
       wx.showToast({ icon: 'none', title: '结束时间不能早于开始' });
       return;
     }
-    if (!(await this.ensurePeriodDateAvailable(dateStr))) return;
-    const d = new Date(dateStr);
-    d.setHours(12, 0, 0, 0);
-    try {
-      const result = await api.createEvent({
-        subject: 'wife',
-        category: 'period_end',
-        payload: { is_estimated: false },
-        occurred_at: d.toISOString(),
-        source: 'manual',
-      });
-      if (result.deduped) {
-        wx.showToast({ icon: 'none', title: '这一天已经记过啦' });
-      } else {
-        wx.showToast({ icon: 'success', title: '已记录结束时间' });
-      }
-      this.refresh();
-    } catch (err) {
-      console.warn('[home] set end failed', err);
-      wx.showToast({ icon: 'none', title: '记录失败' });
-    }
+    const openCycle = this.findOpenCycleByDate(dataset.startDate);
+    app.globalData.pendingRecordDraft = {
+      subject: 'wife',
+      startDate: dataset.startDate,
+      endDate: dateStr,
+      batchId: dataset.batchId || (openCycle ? openCycle.batchId : '') || '',
+    };
+    app.globalData.pendingRecordDate = undefined;
+    wx.switchTab({ url: '/pages/record/record' });
   },
 
   async onLongPressItem(e: WechatMiniprogram.TouchEvent) {
@@ -518,6 +522,16 @@ Page({
     return undefined;
   },
 
+  findLatestOpenCycle(): CycleVM | undefined {
+    return this.data.cycles.find(c => c.ongoing || c.endLabel === '未记结束');
+  },
+
+  findOpenCycleByDate(dateStr: string): CycleVM | undefined {
+    return this.data.cycles.find(c =>
+      c.startDate <= dateStr && (c.ongoing || c.endLabel === '未记结束' || (c.endDate ? c.endDate >= dateStr : false)),
+    );
+  },
+
   async ensurePeriodDateAvailable(dateStr: string) {
     try {
       const events = await api.listEvents({ subject: 'wife', limit: 300 });
@@ -587,11 +601,7 @@ function buildCycles(
     const startTs = new Date(start.occurred_at).getTime();
     const nextTs = next ? new Date(next.occurred_at).getTime() : Infinity;
 
-    const matchedEnd = endsAsc.find(e => {
-      if (usedEnds.has(e._id)) return false;
-      const ts = new Date(e.occurred_at).getTime();
-      return ts >= startTs && ts < nextTs;
-    });
+    const matchedEnd = findMatchingCycleEnd(start, endsAsc, usedEnds, nextTs);
     if (matchedEnd) usedEnds.add(matchedEnd._id);
 
     const ongoing = !matchedEnd && !next;
@@ -603,17 +613,16 @@ function buildCycles(
       const ts = new Date(e.occurred_at).getTime();
       return ts >= startTs && ts <= windowEndTs;
     });
-
-    const records = buildCycleRecords(
-      cycleEventsInWindow,
-    );
+    const cycleBatchId = start.batch_id || (matchedEnd ? matchedEnd.batch_id : '') || `cycle_${start._id}`;
+    const cycleEventsForDisplay = mergeCycleEventsByBatch(cycleEventsInWindow, cycleEvents, cycleBatchId);
+    const records = buildCycleRecords(cycleEventsForDisplay);
 
     let durationLabel: string;
     if (matchedEnd) {
-      const days = daysBetween(matchedEnd.occurred_at, start.occurred_at) + 1;
+      const days = calendarDaysBetween(matchedEnd.occurred_at, start.occurred_at) + 1;
       durationLabel = `${days} 天`;
     } else if (ongoing) {
-      const days = daysBetween(new Date(), start.occurred_at) + 1;
+      const days = calendarDaysBetween(new Date(), start.occurred_at) + 1;
       durationLabel = `进行中 · 第 ${days} 天`;
     } else {
       durationLabel = '未记结束时间';
@@ -621,6 +630,7 @@ function buildCycles(
 
     cycles.push({
       id: start._id,
+      batchId: cycleBatchId,
       startDate: ymd(new Date(start.occurred_at)),
       startLabel: fmtYMD(start.occurred_at),
       endDate: matchedEnd ? ymd(new Date(matchedEnd.occurred_at)) : null,
@@ -628,8 +638,8 @@ function buildCycles(
       durationLabel,
       ongoing,
       records,
-      recordEventIds: cycleEventsInWindow.map(event => event._id),
-      recordEventIdsText: cycleEventsInWindow.map(event => event._id).join(','),
+      recordEventIds: cycleEventsForDisplay.map(event => event._id),
+      recordEventIdsText: cycleEventsForDisplay.map(event => event._id).join(','),
       expanded: !!expandedMap[start._id],
     });
   }
@@ -764,7 +774,7 @@ function categoryOrder(category: string): number {
 }
 
 function findClosedCycleConflictDate(events: AppEvent[], dates: string[]): string {
-  const ranges = buildClosedCycleRanges(events);
+  const ranges = buildBlockedCycleRanges(events);
   for (const date of dates) {
     if (ranges.some(range => date >= range.startDate && date <= range.endDate)) {
       return date;
@@ -773,7 +783,7 @@ function findClosedCycleConflictDate(events: AppEvent[], dates: string[]): strin
   return '';
 }
 
-function buildClosedCycleRanges(events: AppEvent[]): Array<{ startDate: string; endDate: string }> {
+function buildBlockedCycleRanges(events: AppEvent[]): Array<{ startDate: string; endDate: string }> {
   const valid = events.filter(e => !e.deleted_at && e.subject === 'wife' && !!e.occurred_at);
   const startsAsc = valid
     .filter(e => e.category === 'period_start')
@@ -794,11 +804,10 @@ function buildClosedCycleRanges(events: AppEvent[]): Array<{ startDate: string; 
       const endTs = new Date(end.occurred_at).getTime();
       return endTs >= startTs && endTs < nextStartTs;
     });
-    if (!matchedEnd) continue;
-    usedEnds.add(matchedEnd._id);
+    if (matchedEnd) usedEnds.add(matchedEnd._id);
     ranges.push({
       startDate: ymd(new Date(start.occurred_at)),
-      endDate: ymd(new Date(matchedEnd.occurred_at)),
+      endDate: matchedEnd ? ymd(new Date(matchedEnd.occurred_at)) : '9999-12-31',
     });
   }
 
@@ -811,4 +820,42 @@ function asRecord(value: unknown): Record<string, any> {
 
 function safeIso(value: unknown): string {
   return typeof value === 'string' ? value : '';
+}
+
+function makeBatchId(): string {
+  return `batch_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function mergeCycleEventsByBatch(
+  inWindow: AppEvent[],
+  allCycleEvents: AppEvent[],
+  cycleBatchId: string,
+): AppEvent[] {
+  const map = new Map<string, AppEvent>();
+  inWindow.forEach(event => map.set(event._id, event));
+  if (cycleBatchId) {
+    allCycleEvents
+      .filter(event => event.batch_id === cycleBatchId)
+      .forEach(event => map.set(event._id, event));
+  }
+  return Array.from(map.values()).sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+}
+
+function findMatchingCycleEnd(
+  start: AppEvent,
+  endsAsc: AppEvent[],
+  usedEnds: Set<string>,
+  nextStartTs: number,
+): AppEvent | undefined {
+  if (start.batch_id) {
+    const sameBatch = endsAsc.find(end => !usedEnds.has(end._id) && end.batch_id === start.batch_id);
+    if (sameBatch) return sameBatch;
+  }
+
+  const startTs = new Date(start.occurred_at).getTime();
+  return endsAsc.find(end => {
+    if (usedEnds.has(end._id)) return false;
+    const endTs = new Date(end.occurred_at).getTime();
+    return endTs >= startTs && endTs < nextStartTs;
+  });
 }

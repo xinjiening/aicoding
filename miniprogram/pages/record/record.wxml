@@ -2,24 +2,11 @@
 
 <scroll-view scroll-y enable-flex class="page-wrap">
 
-  <!-- 谁 + 时间：横向 50/50 -->
-  <view class="row-cards">
-    <!-- 谁 -->
-    <view class="card half">
-      <view class="card-title">关于谁</view>
-      <view class="seg-row">
-        <view class="seg {{ subject === 'wife' ? 'seg-on' : '' }}" data-subject="wife" bindtap="onSubjectTap">老婆</view>
-        <view class="seg {{ subject === 'husband' ? 'seg-on' : '' }}" data-subject="husband" bindtap="onSubjectTap">我</view>
-      </view>
-    </view>
-
-    <!-- 时间（仅"现在/选择日期"的开关在这） -->
-    <view class="card half">
-      <view class="card-title">什么时候</view>
-      <view class="seg-row">
-        <view class="seg {{ timeMode === 'now' ? 'seg-on' : '' }}" bindtap="onUseNow">现在</view>
-        <view class="seg {{ timeMode === 'range' ? 'seg-on' : '' }}" bindtap="onUseDateRange">选择日期</view>
-      </view>
+  <view class="card">
+    <view class="card-title">什么时候</view>
+    <view class="seg-row">
+      <view class="seg {{ timeMode === 'now' ? 'seg-on' : '' }}" bindtap="onUseNow">现在</view>
+      <view class="seg {{ timeMode === 'range' ? 'seg-on' : '' }}" bindtap="onUseDateRange">选择日期</view>
     </view>
   </view>
 
@@ -27,11 +14,8 @@
   <view wx:if="{{ timeMode === 'range' }}" class="card">
     <view class="card-title">日期范围</view>
     <view class="range-panel">
-      <view class="card-sub" wx:if="{{ subject === 'wife' }}">
-        💡 选好后会作为「大姨妈周期」记到周期页；只填开始也行，结束日期可以以后再补。
-      </view>
-      <view class="card-sub" wx:else>
-        💡 这一笔会用所选日期作为发生时间。
+      <view class="card-sub">
+        💡 选好后会作为老婆的「大姨妈周期」记到周期页；只填开始也行，结束日期可以以后再补。
       </view>
 
       <view class="seg-row range-row">
@@ -109,4 +93,5 @@
   <view class="hint">
     💡 V1：本页采用快速标签录入。AI 自然语言录入将在 V1.1 加入（在这里加一个「自由说一句」输入框）。
   </view>
+
 </scroll-view>

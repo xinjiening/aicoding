@@ -235,19 +235,38 @@ export const api = {
 
   createEvent(input: CreateEventInput): Promise<{ event: AppEvent; deduped: boolean; existing_id?: string }> {
     if (!isCloudReady()) {
-      return Promise.resolve(mockCreateEvent(input));
+      const result = mockCreateEvent(input);
+      invalidateInflight(['list-events', 'home-bundle']);
+      return Promise.resolve(result);
     }
-    return callCloud('data-rw', { action: 'createEvent', input });
+    return callCloud('data-rw', { action: 'createEvent', input }).then((res) => {
+      invalidateInflight(['list-events', 'home-bundle']);
+      return res;
+    });
   },
 
   softDeleteEvent(event_id: string): Promise<boolean> {
-    if (!isCloudReady()) return Promise.resolve(mockSoftDelete(event_id));
-    return callCloud<boolean>('data-rw', { action: 'softDeleteEvent', event_id });
+    if (!isCloudReady()) {
+      const result = mockSoftDelete(event_id);
+      invalidateInflight(['list-events', 'home-bundle']);
+      return Promise.resolve(result);
+    }
+    return callCloud<boolean>('data-rw', { action: 'softDeleteEvent', event_id }).then((res) => {
+      invalidateInflight(['list-events', 'home-bundle']);
+      return res;
+    });
   },
 
   hardDeleteEvent(event_id: string): Promise<boolean> {
-    if (!isCloudReady()) return Promise.resolve(mockHardDelete(event_id));
-    return callCloud<boolean>('data-rw', { action: 'hardDeleteEvent', event_id });
+    if (!isCloudReady()) {
+      const result = mockHardDelete(event_id);
+      invalidateInflight(['list-events', 'home-bundle']);
+      return Promise.resolve(result);
+    }
+    return callCloud<boolean>('data-rw', { action: 'hardDeleteEvent', event_id }).then((res) => {
+      invalidateInflight(['list-events', 'home-bundle']);
+      return res;
+    });
   },
 
   // mock 模式专属：切换为妻子身份调试
